@@ -15,5 +15,9 @@
   "prettier.enable": false,
   "typescript.tsdk": "node_modules/typescript/lib",
   "unocss.root": ["./"],
-  "vue.server.hybridMode": true
+  "vue.server.hybridMode": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  }
 }

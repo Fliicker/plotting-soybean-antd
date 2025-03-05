@@ -21,6 +21,6 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true
   },
-  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.vue"],
+  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.vue", "src/theme/settings.ts"],
   "exclude": ["node_modules", "dist"]
 }
