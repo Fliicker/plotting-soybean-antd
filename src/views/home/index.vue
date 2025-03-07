@@ -12,7 +12,7 @@ import CreativityBanner from './modules/creativity-banner.vue';
     <HeaderBanner />
     <CardData />
     <ARow :gutter="[16, 16]">
-      <ACol :span="24" :lg="14">
+      <ACol :span="24" :U="14">
         <LineChart />
       </ACol>
       <ACol :span="24" :lg="10">

@@ -15,13 +15,13 @@ export const themeSettings: App.Theme.ThemeSetting = {
   fixedHeaderAndTab: true,
   sider: {
     inverted: false,
-    width: 220,
+    width: 300,
     collapsedWidth: 64,
     mixWidth: 90,
     mixCollapsedWidth: 64,
     mixChildMenuWidth: 200
   },
-  footer: { visible: true, fixed: false, height: 48, right: true },
+  footer: { visible: false, fixed: false, height: 48, right: true },
   watermark: { visible: false, text: 'SoybeanAdmin' },
   tokens: {
     light: {

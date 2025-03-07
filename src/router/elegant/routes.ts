@@ -205,6 +205,17 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'main',
+    path: '/main',
+    component: 'layout.base$view.main',
+    meta: {
+      title: 'main',
+      i18nKey: 'route.main',
+      icon: 'mdi:monitor-dashboard',
+      order: 0
+    }
+  },
+  {
     name: 'manage',
     path: '/manage',
     component: 'layout.base',
