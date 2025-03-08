@@ -220,4 +220,16 @@ declare namespace Api {
       children?: MenuTree[];
     };
   }
+
+  namespace Map {
+    interface BaseTreeNode {
+      id: string;
+      layerName: string | null;
+      tableName: string | null;
+      category: string | null;
+      usage: string | null;
+      children: BaseTreeNode[];
+      [key: string]: any;
+    }
+  }
 }

@@ -18,7 +18,6 @@ function createCommonRequest<ResponseData = any>(
   options?: Partial<RequestOption<ResponseData>>
 ) {
   const opts = createDefaultOptions<ResponseData>(options);
-
   const axiosConf = createAxiosConfig(axiosConfig);
   const instance = axios.create(axiosConf);
 
