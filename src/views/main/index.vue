@@ -81,11 +81,19 @@ onMounted(async () => {
 
 <template>
   <div id="map-container" ref="mapContainer">
-    <ADrawer class="absolute" placement="left" :mask="false" :closable="false" :open="open" :get-container="false">
+    <ADrawer
+      class="absolute bg-tech-2"
+      :body-style="{ background: 'rgb(50, 62, 79)' }"
+      placement="left"
+      :mask="false"
+      :closable="false"
+      :open="open"
+      :get-container="false"
+    >
       <template #extra>
         <AButton @click="onClose">Cancel</AButton>
       </template>
-      <ACard title="数据目录" class="h-1/2 card-wrapper bg-tech-1">
+      <ACard title="数据目录" class="h-1/2 border-0 card-wrapper bg-tech-1">
         <Atree
           v-model:selected-keys="selectedKeys"
           v-model:checked-keys="checkedKeys"
@@ -96,7 +104,7 @@ onMounted(async () => {
           :field-names="{ title: 'label', key: 'id' }"
         ></Atree>
       </ACard>
-      <ACard title="图层列表" class="mt-1/10 h-2/5 card-wrapper bg-tech-1"></ACard>
+      <ACard title="图层列表" class="mt-1/10 h-2/5 border-0 card-wrapper bg-tech-1"></ACard>
     </ADrawer>
     <div class="absolute">
       <AButton type="primary" @click="showDrawer">Open</AButton>
