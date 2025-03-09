@@ -39,7 +39,7 @@ export const themeSettings: App.Theme.ThemeSetting = {
         tab: '0 1px 2px rgb(0, 21, 41, 0.08)'
       }
     },
-    dark: { colors: { container: 'rgb(66, 78, 95)', layout: 'rgb(50, 62, 79)', 'base-text': 'rgb(224, 224, 224)' } }
+    dark: { colors: { container: '#111727', layout: 'rgb(50, 62, 79)', 'base-text': 'rgb(224, 224, 224)' } }
   }
 };
 

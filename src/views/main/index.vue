@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import mapboxgl from 'mapbox-gl';
 import MapScene from '@/utils/mapUtils/mapModels/MapScene';
 import { fetchGetLayerTree } from '@/service/api';
+import ChatBox from './modules/chat-box.vue';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoiZmxpY2tlcjA1NiIsImEiOiJjbGd4OXM1c3cwOWs3M21ta2RiMDhoczVnIn0.lE8NriBf_g3RZWCusw_mZA';
 
@@ -82,8 +83,9 @@ onMounted(async () => {
 <template>
   <div id="map-container" ref="mapContainer">
     <ADrawer
-      class="absolute bg-tech-2"
-      :body-style="{ background: 'rgb(50, 62, 79)' }"
+      class="absolute"
+      :body-style="{ background: '#1B2232' }"
+      width="300"
       placement="left"
       :mask="false"
       :closable="false"
@@ -108,6 +110,9 @@ onMounted(async () => {
     </ADrawer>
     <div class="absolute">
       <AButton type="primary" @click="showDrawer">Open</AButton>
+    </div>
+    <div class="absolute right-5 top-1/8 h-3/4 w-1/5">
+      <ChatBox></ChatBox>
     </div>
   </div>
 </template>
