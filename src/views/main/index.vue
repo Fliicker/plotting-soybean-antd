@@ -37,6 +37,7 @@ const replaceProperties = (node: Map.BaseTreeNode): Map.LayerData => {
 
 const initData = async () => {
   const data = await fetchGetLayerTree();
+
   return replaceProperties(data);
 };
 
@@ -73,6 +74,8 @@ onMounted(async () => {
 
     dataTree.value = (await initData()).children;
     const layerList = extractNodes(dataTree.value);
+    console.log(layerList);
+
     const scene = new MapScene(map);
     scene.loadFromData(layerList);
     console.log(scene);
@@ -106,7 +109,7 @@ onMounted(async () => {
           :field-names="{ title: 'label', key: 'id' }"
         ></Atree>
       </ACard>
-      <ACard title="图层列表" class="mt-1/10 h-2/5 border-0 card-wrapper bg-tech-1"></ACard>
+      <ACard title="图层列表" class="mt-1/10 h-4/9 border-0 card-wrapper bg-tech-1"></ACard>
     </ADrawer>
     <div class="absolute">
       <AButton type="primary" @click="showDrawer">Open</AButton>

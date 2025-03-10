@@ -56,7 +56,7 @@ export default class MapNode {
         node.isDemSource = true;
       }
     } else if (category === 'vector') {
-      node.labelField = usage.visualizationField.split(',')[0];
+      node.labelField = usage.visualizationField;
       node.source = `http://${window.location.host}${import.meta.env.VITE_BACK_SERVER}/resource/vector/getMVT/${data.id}/{z}/{x}/{y}`;
       if (usage.type === 'point') {
         node.type = NodeType.POINT;
