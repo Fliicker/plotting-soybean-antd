@@ -29,7 +29,8 @@ export const themeVars: App.Theme.ThemeTokenCSSVars = {
     'tech-1': '#28374B',
     'tech-2': '#1B2232',
     'tech-3': 'rgb(50, 62, 79)',
-    'tech-4': '#111727'
+    'tech-4': '#111727',
+    'tech-5': '#192944'
   },
   boxShadow: {
     header: 'var(--header-box-shadow)',

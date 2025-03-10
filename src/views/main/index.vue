@@ -111,7 +111,7 @@ onMounted(async () => {
     <div class="absolute">
       <AButton type="primary" @click="showDrawer">Open</AButton>
     </div>
-    <div class="absolute right-5 top-1/8 h-3/4 w-1/5">
+    <div class="absolute right-5 top-1/10 h-4/5 w-1/5">
       <ChatBox></ChatBox>
     </div>
   </div>
