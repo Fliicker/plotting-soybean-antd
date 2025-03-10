@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { h, ref } from 'vue';
 import type { CSSProperties } from 'vue';
-import { h } from 'vue';
 import { Bubble } from 'ant-design-x-vue';
 import { UserOutlined } from '@ant-design/icons-vue';
 import { Flex } from 'ant-design-vue';
 import { SimpleScrollbar } from '@sa/materials';
 
+const userText = ref('');
 const fooAvatar: CSSProperties = {
   color: '#f56a00',
   backgroundColor: '#fde3cf'
@@ -31,20 +32,15 @@ const hideAvatar: CSSProperties = {
     :body-style="{
       height: '90%',
       'box-sizing': 'border-box',
-      padding: '15px'
+      padding: '10px'
     }"
+    size="small"
     class="h-full w-full rounded-md bg-tech-5"
   >
-    <div class="h-3/4 w-full">
+    <!--不用small会导致body部分溢出？？？-->
+    <div class="h-3/4 w-full p-3">
       <SimpleScrollbar>
         <Flex gap="middle" vertical>
-          <!--
- <Welcome
-          icon="https://mdn.alipayobjects.com/huamei_iwk9zp/afts/img/A*s5sNRo5LjfQAAAAAAAAAAAAADgCCAQ/fmt.webp"
-          title="Hello, I'm Ant Design X"
-          description="Base on Ant Design, AGI product interface solution, create a better intelligent vision~"
-        /> 
--->
           <Bubble
             variant="filled"
             placement="start"
@@ -66,7 +62,9 @@ const hideAvatar: CSSProperties = {
         </Flex>
       </SimpleScrollbar>
     </div>
-    <div class="h-1/4 w-full bg-tech-3"></div>
+    <div class="h-1/4 w-full p-3">
+      <ATextarea v-model:value="userText" placeholder="Autosize height based on content lines" />
+    </div>
   </ACard>
 </template>
 
