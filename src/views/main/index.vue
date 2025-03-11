@@ -90,7 +90,7 @@ onMounted(async () => {
     dataTree.value = (await initData()).children;
     treeData.value = convertToTreeData(dataTree.value);
     const layerList = extractNodes(dataTree.value);
-    console.log(dataTree.value);
+    console.log(treeData.value);
 
     const scene = new MapScene(map);
     scene.loadFromData(layerList);
@@ -131,7 +131,6 @@ onMounted(async () => {
             :auto-expand-parent="true"
             :show-line="true"
             :tree-data="treeData"
-            :field-names="{ title: 'name_cn', key: 'id' }"
           >
             <template #title="{ key, title }">
               <ADropdown :trigger="['contextmenu']">
