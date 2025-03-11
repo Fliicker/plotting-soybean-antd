@@ -38,36 +38,35 @@ const onContextMenuClick = (id: string, title: string) => {
 
 const onLayerTreeDrop = (info: AntTreeNodeDropEvent) => {
   if (!scene) return;
+  console.log(info);
+
   const dropKey = info.node.key; // 目标节点key
   const dragKey = info.dragNode.key; // 拖拽节点key
   const dropPos = info.dropPosition; // 放置位置
   const data = [...(layerTreeData.value || [])]; // 当前树数据
 
   const dragIndex = data.findIndex(item => item?.key === dragKey);
-  const dropIndex = data.findIndex(item => item?.key === dropKey);
-
-  if (dragIndex === -1 || dropIndex === -1 || info.dragNode.parent !== info.node.parent) {
-    return;
-  }
+  const dropIndex = data.findIndex(item => item?.key === dropKey); // Attention: 拖到最顶端时无法变成-1（仍然为0）
 
   // 移除拖拽节点
   const [removed] = data.splice(dragIndex, 1);
 
   let newIndex = dropIndex;
   if (dropPos === -1) {
-    newIndex = dropIndex > dragIndex ? dropIndex - 1 : dropIndex;
+    newIndex = 0;
   } else {
     newIndex = dropIndex >= dragIndex ? dropIndex : dropIndex + 1;
   }
-
+  console.log(dropPos);
   data.splice(newIndex, 0, removed);
-
-  layerTreeData.value = [...data];
 
   // 更改图层顺序
   const layerId = String(dragKey); // 拖拽图层的 ID
-  const beforeId = String(data[newIndex + 1]?.key) || null; // 目标图层的 ID（下一个图层的 ID
+  const beforeId = dropPos !== -1 ? String(data[dropPos - 1]?.key) : null; // 目标图层的 ID（下一个图层的 ID
   scene.moveNode(layerId, beforeId);
+
+  // 更新图层树
+  layerTreeData.value = [...data];
 };
 
 const replaceProperties = (node: Map.BaseTreeNode): Map.LayerData => {
