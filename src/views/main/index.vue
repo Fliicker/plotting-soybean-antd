@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import mapboxgl from 'mapbox-gl';
+import { SimpleScrollbar } from '@sa/materials';
+import type { DataNode } from 'ant-design-vue/es/tree';
 import MapScene from '@/utils/mapUtils/mapModels/MapScene';
 import { fetchGetLayerTree } from '@/service/api';
 import ChatBox from './modules/chat-box.vue';
@@ -11,11 +13,11 @@ let map: mapboxgl.Map;
 
 const mapContainer = ref<HTMLElement | null>(null);
 const dataTree = ref<Map.LayerData[]>([]);
+const treeData = ref<DataNode[]>([]);
 
 const open = ref(true);
 
-const selectedKeys = ref<string[]>([]);
-const checkedKeys = ref<string[]>([]);
+const expandedKeys = ref<string[]>([]);
 
 const showDrawer = () => {
   open.value = true;
@@ -23,6 +25,10 @@ const showDrawer = () => {
 
 const onClose = () => {
   open.value = false;
+};
+
+const onContextMenuClick = (treeKey: string, menuKey: string | number) => {
+  console.log(`treeKey: ${treeKey}, menuKey: ${menuKey}`);
 };
 
 const replaceProperties = (node: Map.BaseTreeNode): Map.LayerData => {
@@ -60,6 +66,15 @@ const extractNodes = (tree: Map.LayerData[]): Map.LayerData[] => {
   return leafNodes;
 };
 
+const convertToTreeData = (layers: Map.LayerData[]): DataNode[] => {
+  return layers.map(layer => ({
+    key: layer.id,
+    title: layer.name_cn,
+    children: layer.children ? convertToTreeData(layer.children) : undefined,
+    isLeaf: !layer.children || layer.children.length === 0
+  }));
+};
+
 onMounted(async () => {
   if (mapContainer.value) {
     map = new mapboxgl.Map({
@@ -73,8 +88,9 @@ onMounted(async () => {
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
     dataTree.value = (await initData()).children;
+    treeData.value = convertToTreeData(dataTree.value);
     const layerList = extractNodes(dataTree.value);
-    console.log(layerList);
+    console.log(dataTree.value);
 
     const scene = new MapScene(map);
     scene.loadFromData(layerList);
@@ -88,7 +104,7 @@ onMounted(async () => {
     <ADrawer
       class="absolute"
       :body-style="{ background: '#1B2232' }"
-      width="300"
+      width="350"
       placement="left"
       :mask="false"
       :closable="false"
@@ -98,18 +114,39 @@ onMounted(async () => {
       <template #extra>
         <AButton @click="onClose">Cancel</AButton>
       </template>
-      <ACard title="数据目录" class="h-1/2 border-0 card-wrapper bg-tech-1">
-        <Atree
-          v-model:selected-keys="selectedKeys"
-          v-model:checked-keys="checkedKeys"
-          checkable
-          default-expand-all
-          :auto-expand-parent="true"
-          :show-line="true"
-          :field-names="{ title: 'label', key: 'id' }"
-        ></Atree>
+      <ACard
+        class="h-1/2 border-0 card-wrapper bg-tech-1"
+        :body-style="{
+          height: '100%',
+          'box-sizing': 'border-box',
+          padding: '15px',
+          overflow: 'auto'
+        }"
+      >
+        <SimpleScrollbar>
+          <!-- @ts-ignore -->
+          <ATree
+            v-model:expanded-keys="expandedKeys"
+            default-expand-all
+            :auto-expand-parent="true"
+            :show-line="true"
+            :tree-data="treeData"
+            :field-names="{ title: 'name_cn', key: 'id' }"
+          >
+            <template #title="{ key, title }">
+              <ADropdown :trigger="['contextmenu']">
+                <span>{{ title }}</span>
+                <template #overlay>
+                  <AMenu @click="({ key: menuKey }) => onContextMenuClick(key as string, menuKey)">
+                    <AMenuItem key="1">添加至图层</AMenuItem>
+                  </AMenu>
+                </template>
+              </ADropdown>
+            </template>
+          </ATree>
+        </SimpleScrollbar>
       </ACard>
-      <ACard title="图层列表" class="mt-1/10 h-4/9 border-0 card-wrapper bg-tech-1"></ACard>
+      <ACard class="mt-1/10 h-4/9 border-0 card-wrapper bg-tech-1"></ACard>
     </ADrawer>
     <div class="absolute">
       <AButton type="primary" @click="showDrawer">Open</AButton>
@@ -130,5 +167,14 @@ onMounted(async () => {
 .mapboxgl-ctrl-bottom-left,
 .mapboxgl-ctrl-bottom-right {
   display: none !important;
+}
+
+.ant-tree {
+  background: none;
+  color: rgb(255, 255, 255);
+}
+
+.ant-tree-node-selected {
+  background: rgb(128, 156, 182) !important;
 }
 </style>
