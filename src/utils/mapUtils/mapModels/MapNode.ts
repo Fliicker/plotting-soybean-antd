@@ -1,9 +1,13 @@
+import { mapRequestHead } from '@/service/request';
 import PointLayer from './layerClasses/PointLayer';
 import LabelLayer from './layerClasses/LabelLayer';
 import LineLayer from './layerClasses/LineLayer';
 import PolygonLayer from './layerClasses/PolygonLayer';
 import RasterLayer from './layerClasses/RasterLayer';
 import CustomLayer from './layerClasses/CustomLayer';
+import type MapLayer from './MapLayer';
+import type MapScene from './MapScene';
+import type { ViewState } from './MapScene';
 
 const NodeType = {
   POINT: 0,
@@ -16,20 +20,21 @@ const NodeType = {
 };
 
 export default class MapNode {
-  scene: any = null;
-  id: string | null = null;
-  layers: any[] = [];
+  scene: MapScene | null = null;
+  id: string = '';
+  layers: MapLayer[] = [];
   name: string | null = null;
   type: number = NodeType.CUSTOM;
   source: string | null = null;
   labelField: string | null = null;
-  viewState: any = null;
+  viewState: ViewState | null = null;
   minZoom: number = 0;
   maxZoom: number = 18;
   tileSize: number = 256;
   isDemSource: boolean = false;
+  active: boolean = false;
 
-  static createFromData(data: Map.LayerData, _scene: any): MapNode {
+  static createFromData(data: Map.LayerData, _scene: MapScene): MapNode {
     const node = new MapNode();
     node.scene = _scene;
     node.id = data.id;
@@ -39,7 +44,7 @@ export default class MapNode {
     const usage = data.usage;
     if (usage === null) return node;
     if (category === 'raster') {
-      node.source = `http://${window.location.host}${import.meta.env.VITE_BACK_SERVER}/resource/raster/getRasterTile/${data.id}/{z}/{x}/{y}`;
+      node.source = `${mapRequestHead}/resource/raster/getRasterTile/${data.id}/{z}/{x}/{y}`;
       node.minZoom = Number.parseInt(usage.minZoom, 10);
       node.maxZoom = Number.parseInt(usage.maxZoom, 10);
       node.tileSize = Number.parseInt(usage.size, 10);
@@ -57,7 +62,7 @@ export default class MapNode {
       }
     } else if (category === 'vector') {
       node.labelField = usage.visualizationField;
-      node.source = `http://${window.location.host}${import.meta.env.VITE_BACK_SERVER}/resource/vector/getMVT/${data.id}/{z}/{x}/{y}`;
+      node.source = `${mapRequestHead}/resource/vector/getMVT/${data.id}/{z}/{x}/{y}`;
       if (usage.type === 'point') {
         node.type = NodeType.POINT;
       } else if (usage.type === 'line') {
@@ -115,6 +120,8 @@ export default class MapNode {
   }
 
   loadAll() {
+    this.active = true;
+    if (!this.map) return;
     if (this.type === NodeType.RASTER) {
       if (this.isDemSource === true) {
         this.map.addSource(this.id!, {
@@ -143,33 +150,56 @@ export default class MapNode {
   }
 
   removeAll() {
+    this.active = false;
+    if (!this.map) return;
     this.layers.forEach(layer => {
       layer.remove();
     });
 
-    if (this.map.getSource(this.id)) this.map.removeSource(this.id!);
+    if (this.map.getSource(this.id!)) this.map.removeSource(this.id!);
   }
 
   get map() {
-    return this.scene.map;
+    if (this.scene) {
+      return this.scene.map;
+    }
+    return null;
   }
 
   get deckOverlay() {
-    return this.scene.deckOverlay;
+    if (this.scene) {
+      return this.scene.deckOverlay;
+    }
+    return null;
   }
 
   get isTerrain() {
-    return this.scene.terrainId === this.id;
+    if (this.scene) {
+      return this.scene.terrainId === this.id;
+    }
+    return null;
   }
 
   getLayer(i: number) {
     return this.layers[i];
   }
 
-  addLayer(layer: any) {
+  addLayer(layer: MapLayer) {
     this.layers.push(layer);
     const index = this.layers.indexOf(layer);
     layer.id = this.id + index.toString();
     return index;
+  }
+
+  moveBeforeNode(beforeNode: MapNode | null) {
+    if (beforeNode === null || beforeNode.layers.length === 0) {
+      this.layers.forEach((layer: MapLayer) => {
+        this.map?.moveLayer(layer.id);
+      });
+    } else {
+      this.layers.forEach((layer: MapLayer) => {
+        this.map?.moveLayer(layer.id, beforeNode.getLayer(0).id);
+      });
+    }
   }
 }

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import mapboxgl from 'mapbox-gl';
 import { SimpleScrollbar } from '@sa/materials';
-import type { DataNode } from 'ant-design-vue/es/tree';
+import type { AntTreeNodeDropEvent, TreeProps } from 'ant-design-vue/es/tree';
 import MapScene from '@/utils/mapUtils/mapModels/MapScene';
 import { fetchGetLayerTree } from '@/service/api';
 import ChatBox from './modules/chat-box.vue';
@@ -11,13 +11,16 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiZmxpY2tlcjA1NiIsImEiOiJjbGd4OXM1c3cwOWs3M21ta
 
 let map: mapboxgl.Map;
 
+let scene: MapScene | null = null;
+
 const mapContainer = ref<HTMLElement | null>(null);
 const dataTree = ref<Map.LayerData[]>([]);
-const treeData = ref<DataNode[]>([]);
+const treeData = ref<TreeProps['treeData']>([]);
+const layerTreeData = ref<TreeProps['treeData']>([]);
 
 const open = ref(true);
 
-const expandedKeys = ref<string[]>([]);
+const expandedKeys = ref<string[]>(['root']);
 
 const showDrawer = () => {
   open.value = true;
@@ -27,8 +30,44 @@ const onClose = () => {
   open.value = false;
 };
 
-const onContextMenuClick = (treeKey: string, menuKey: string | number) => {
-  console.log(`treeKey: ${treeKey}, menuKey: ${menuKey}`);
+const onContextMenuClick = (id: string, title: string) => {
+  if (scene?.loadNode(id)) {
+    layerTreeData.value = [{ title, key: id, children: [] }, ...(layerTreeData.value || [])];
+  }
+};
+
+const onLayerTreeDrop = (info: AntTreeNodeDropEvent) => {
+  if (!scene) return;
+  const dropKey = info.node.key; // 目标节点key
+  const dragKey = info.dragNode.key; // 拖拽节点key
+  const dropPos = info.dropPosition; // 放置位置
+  const data = [...(layerTreeData.value || [])]; // 当前树数据
+
+  const dragIndex = data.findIndex(item => item?.key === dragKey);
+  const dropIndex = data.findIndex(item => item?.key === dropKey);
+
+  if (dragIndex === -1 || dropIndex === -1 || info.dragNode.parent !== info.node.parent) {
+    return;
+  }
+
+  // 移除拖拽节点
+  const [removed] = data.splice(dragIndex, 1);
+
+  let newIndex = dropIndex;
+  if (dropPos === -1) {
+    newIndex = dropIndex > dragIndex ? dropIndex - 1 : dropIndex;
+  } else {
+    newIndex = dropIndex >= dragIndex ? dropIndex : dropIndex + 1;
+  }
+
+  data.splice(newIndex, 0, removed);
+
+  layerTreeData.value = [...data];
+
+  // 更改图层顺序
+  const layerId = String(dragKey); // 拖拽图层的 ID
+  const beforeId = String(data[newIndex + 1]?.key) || null; // 目标图层的 ID（下一个图层的 ID
+  scene.moveNode(layerId, beforeId);
 };
 
 const replaceProperties = (node: Map.BaseTreeNode): Map.LayerData => {
@@ -43,7 +82,6 @@ const replaceProperties = (node: Map.BaseTreeNode): Map.LayerData => {
 
 const initData = async () => {
   const data = await fetchGetLayerTree();
-
   return replaceProperties(data);
 };
 
@@ -66,12 +104,12 @@ const extractNodes = (tree: Map.LayerData[]): Map.LayerData[] => {
   return leafNodes;
 };
 
-const convertToTreeData = (layers: Map.LayerData[]): DataNode[] => {
+const convertToTreeData = (layers: Map.LayerData[]): TreeProps['treeData'] => {
   return layers.map(layer => ({
     key: layer.id,
     title: layer.name_cn,
     children: layer.children ? convertToTreeData(layer.children) : undefined,
-    isLeaf: !layer.children || layer.children.length === 0
+    isLayer: layer.usage !== null
   }));
 };
 
@@ -90,9 +128,8 @@ onMounted(async () => {
     dataTree.value = (await initData()).children;
     treeData.value = convertToTreeData(dataTree.value);
     const layerList = extractNodes(dataTree.value);
-    console.log(treeData.value);
 
-    const scene = new MapScene(map);
+    scene = new MapScene(map);
     scene.loadFromData(layerList);
     console.log(scene);
   }
@@ -124,19 +161,12 @@ onMounted(async () => {
         }"
       >
         <SimpleScrollbar>
-          <!-- @ts-ignore -->
-          <ATree
-            v-model:expanded-keys="expandedKeys"
-            default-expand-all
-            :auto-expand-parent="true"
-            :show-line="true"
-            :tree-data="treeData"
-          >
-            <template #title="{ key, title }">
+          <ATree default-expand-all :auto-expand-parent="true" :show-line="true" :tree-data="treeData">
+            <template #title="{ key, title, isLayer }">
               <ADropdown :trigger="['contextmenu']">
                 <span>{{ title }}</span>
                 <template #overlay>
-                  <AMenu @click="({ key: menuKey }) => onContextMenuClick(key as string, menuKey)">
+                  <AMenu v-if="isLayer" @click="({ key: menuKey }) => onContextMenuClick(key as string, title)">
                     <AMenuItem key="1">添加至图层</AMenuItem>
                   </AMenu>
                 </template>
@@ -145,7 +175,37 @@ onMounted(async () => {
           </ATree>
         </SimpleScrollbar>
       </ACard>
-      <ACard class="mt-1/10 h-4/9 border-0 card-wrapper bg-tech-1"></ACard>
+      <ACard
+        class="mt-1/10 h-4/9 border-0 card-wrapper bg-tech-1"
+        :body-style="{
+          height: '100%',
+          'box-sizing': 'border-box',
+          padding: '15px',
+          overflow: 'auto'
+        }"
+      >
+        <SimpleScrollbar>
+          <ATree
+            v-model:expanded-keys="expandedKeys"
+            checkable
+            default-expand-all
+            draggable
+            :tree-data="layerTreeData"
+            :allow-drop="
+              ({ dropPosition }) => {
+                // 禁止拖入节点内部（只能作为同级节点）
+                return dropPosition !== 0;
+              }
+            "
+            @drop="onLayerTreeDrop"
+          >
+            <template #title="{ title, key }">
+              <span v-if="key === '0-0-1-0'" style="color: #1890ff">{{ title }}</span>
+              <template v-else>{{ title }}</template>
+            </template>
+          </ATree>
+        </SimpleScrollbar>
+      </ACard>
     </ADrawer>
     <div class="absolute">
       <AButton type="primary" @click="showDrawer">Open</AButton>

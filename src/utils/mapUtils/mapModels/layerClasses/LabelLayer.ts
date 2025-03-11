@@ -4,11 +4,11 @@ export default class LabelLayer extends MapLayer {
   type: number = LayerType.LABEL;
 
   load() {
-    this.map.addLayer({
+    this.map?.addLayer({
       id: this.id,
       type: 'symbol',
       source: this.sourceId,
-      'source-layer': this.sourceName,
+      'source-layer': this.sourceName ?? undefined,
       minzoom: 0,
       maxzoom: 22,
       layout: {
@@ -24,7 +24,7 @@ export default class LabelLayer extends MapLayer {
   }
 
   remove() {
-    if (this.map.getLayer(this.id)) this.map.removeLayer(this.id);
+    if (this.map?.getLayer(this.id)) this.map.removeLayer(this.id);
   }
 
   get labelField() {

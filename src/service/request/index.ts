@@ -209,3 +209,5 @@ export const apiRequest = createRequest<App.Service.DemoResponse>(
     }
   }
 );
+
+export const mapRequestHead = `http://${window.location.host}${otherBaseURL.api}`;

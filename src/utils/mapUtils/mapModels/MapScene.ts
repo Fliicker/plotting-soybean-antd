@@ -4,11 +4,11 @@ import { MapboxOverlay as DeckOverlay } from '@deck.gl/mapbox';
 import { reactive } from 'vue';
 import MapNode from './MapNode';
 
-interface ViewState {
-  center: [number, number];
-  pitch: number;
-  bearing: number;
-  zoom: number;
+export interface ViewState {
+  center?: [number, number];
+  pitch?: number;
+  bearing?: number;
+  zoom?: number;
 }
 
 export default class MapScene {
@@ -39,20 +39,20 @@ export default class MapScene {
       this._nodeStatus[data.id] = false;
       this.addNode(node);
     });
-    this.nodeStatus = new Proxy(this._nodeStatus, {
-      set: (target, key, value) => {
-        const keyStr = key as string;
-        if (target[keyStr] !== value) {
-          if (value) {
-            this._loadNode(keyStr); // 仅在此处控制node加载
-          } else {
-            this._removeNode(keyStr);
-          }
-        }
-        target[keyStr] = value;
-        return true;
-      }
-    });
+    // this.nodeStatus = new Proxy(this._nodeStatus, {
+    //   set: (target, key, value) => {
+    //     const keyStr = key as string;
+    //     if (target[keyStr] !== value) {
+    //       if (value) {
+    //         this._loadNode(keyStr); // 仅在此处控制node加载
+    //       } else {
+    //         this._removeNode(keyStr);
+    //       }
+    //     }
+    //     target[keyStr] = value;
+    //     return true;
+    //   }
+    // });
   }
 
   addNode(node: MapNode) {
@@ -73,19 +73,58 @@ export default class MapScene {
     }
   }
 
-  // 不再暴露接口
-  private _loadNode(id: string) {
+  // // 不再暴露接口
+  // private _loadNode(id: string) {
+  //   const node = this.findNodeById(id);
+  //   if (node !== undefined) {
+  //     node.loadAll();
+  //     if (!this.activeNodes.includes(id)) {
+  //       this.activeNodes.push(id);
+  //     }
+  //     // node.flyToThis();
+  //   }
+  // }
+
+  loadNode(id: string): boolean {
     const node = this.findNodeById(id);
     if (node !== undefined) {
-      node.loadAll();
-      // node.flyToThis();
+      if (!node.active) {
+        node.loadAll();
+        // node.flyToThis();
+        return true;
+      }
     }
+    return false;
   }
 
-  private _removeNode(id: string) {
+  // private _removeNode(id: string) {
+  //   const node = this.findNodeById(id);
+  //   if (node !== undefined) {
+  //     node.removeAll();
+  //   }
+  // }
+
+  removeNode(id: string): boolean {
     const node = this.findNodeById(id);
     if (node !== undefined) {
-      node.removeAll();
+      if (node.active) {
+        node.removeAll();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  moveNode(id: string, beforeId: string | null) {
+    const node = this.findNodeById(id);
+    if (!node) return;
+    if (node.active) {
+      if (beforeId !== null) {
+        const beforeNode = this.findNodeById(beforeId) ?? null;
+        node.moveBeforeNode(beforeNode);
+      } else {
+        node.moveBeforeNode(null);
+      }
     }
   }
 

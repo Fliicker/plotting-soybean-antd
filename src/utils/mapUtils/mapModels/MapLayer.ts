@@ -12,7 +12,7 @@ export const LayerType = {
 };
 
 export default abstract class MapLayer {
-  id: string | null = null;
+  id: string = '';
   type: number = LayerType.CUSTOM;
   node: MapNode;
 

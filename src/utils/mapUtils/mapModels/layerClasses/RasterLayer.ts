@@ -5,9 +5,9 @@ export default class RasterLayer extends MapLayer {
 
   load() {
     if (this.isDemLayer) {
-      this.map.setTerrain({ source: this.sourceId, exaggeration: 1.0 });
+      this.map?.setTerrain({ source: this.sourceId, exaggeration: 1.0 });
     }
-    this.map.addLayer({
+    this.map?.addLayer({
       id: this.id,
       type: this.isDemLayer ? 'hillshade' : 'raster',
       paint: {
@@ -26,9 +26,9 @@ export default class RasterLayer extends MapLayer {
 
   remove() {
     if (this.isDemLayer) {
-      if (this.isTerrain) this.map.setTerrain(null);
+      if (this.isTerrain) this.map?.setTerrain(null);
     }
-    if (this.map.getLayer(this.id)) this.map.removeLayer(this.id);
+    if (this.map?.getLayer(this.id)) this.map.removeLayer(this.id);
   }
 
   get labelField() {
