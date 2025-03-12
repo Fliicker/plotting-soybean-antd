@@ -39,16 +39,14 @@ const messages = ref<Message[]>([
 ]);
 const userInput = ref<string>('');
 
-// const emit = defineEmits<{
-//   'execute-command': [commands: string[]];
-// }>();
+const emit = defineEmits<{
+  'execute-command': [commands: string[]];
+}>();
 
-const executeTask = (branch: number, input: object, botMsg: Message) => {
+const executeTask = (branch: number, input: string[], botMsg: Message) => {
   switch (branch) {
     case 1: {
-      console.log(input);
-      // const commands = input as string[];
-      // emit('execute-command', commands);
+      emit('execute-command', input);
       botMsg.content = '正在执行操作...';
       botMsg.loading = false;
       break;

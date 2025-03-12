@@ -140,25 +140,26 @@ onMounted(async () => {
   }
 });
 
-// // Add handler for chat commands
-// const handleExecuteCommand = (commands: string[]) => {
-//   commands.forEach(command => {
-//     // Execute each command based on your requirements
-//     // For example:
-//     const [action, ...params] = command.split(' ');
-//     switch (action) {
-//       case 'open':
-//         scene?.openNode(params[0]);
-//         checkedKeys.value.push(params[0]);
-//         break;
-//       case 'close':
-//         scene?.closeNode(params[0]);
-//         checkedKeys.value = checkedKeys.value.filter(key => key !== params[0]);
-//         break;
-//       // Add more command handlers as needed
-//     }
-//   });
-// };
+// Add handler for chat commands
+const handleExecuteCommand = (commands: string[]) => {
+  // commands.forEach(command => {
+  // Execute each command based on your requirements
+  // For example:
+  // const [action, ...params] = command.split(' ');
+  // switch (action) {
+  //   case 'open':
+  //     scene?.openNode(params[0]);
+  //     checkedKeys.value.push(params[0]);
+  //     break;
+  //   case 'close':
+  //     scene?.closeNode(params[0]);
+  //     checkedKeys.value = checkedKeys.value.filter(key => key !== params[0]);
+  //     break;
+  //   // Add more command handlers as needed
+  // }
+  // });
+  console.log(commands);
+};
 </script>
 
 <template>
@@ -255,8 +256,7 @@ onMounted(async () => {
       <AButton type="primary" @click="showDrawer">Open</AButton>
     </div>
     <div class="absolute right-5 top-1/10 h-4/5 w-1/5">
-      <!-- <ChatBox @execute-command="handleExecuteCommand" /> -->
-      <ChatBox />
+      <ChatBox @execute-command="handleExecuteCommand" />
     </div>
   </div>
 </template>
