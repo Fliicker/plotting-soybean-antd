@@ -25,14 +25,17 @@ export default abstract class MapLayer {
 
   abstract remove(): void;
 
-  // // 在已添加的情况下显示图层
-  // abstract open() {
-  //   throw new Error("Abstract method not implemented");
-  // }
+  open(): void {
+    if (this.map?.getLayer(this.id)) {
+      this.map.setLayoutProperty(this.id, 'visibility', 'visible');
+    }
+  }
 
-  // abstract close() {
-  //   throw new Error("Abstract method not implemented");
-  // }
+  close(): void {
+    if (this.map?.getLayer(this.id)) {
+      this.map.setLayoutProperty(this.id, 'visibility', 'none');
+    }
+  }
 
   genPaint() {
     switch (this.type) {

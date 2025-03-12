@@ -121,23 +121,22 @@ export default class MapNode {
 
   loadAll() {
     this.active = true;
-    if (!this.map) return;
     if (this.type === NodeType.RASTER) {
       if (this.isDemSource === true) {
-        this.map.addSource(this.id!, {
+        this.map?.addSource(this.id!, {
           type: 'raster-dem',
           tiles: [this.source!],
           tileSize: this.tileSize
         });
       } else {
-        this.map.addSource(this.id!, {
+        this.map?.addSource(this.id!, {
           type: 'raster',
           tiles: [this.source!],
           tileSize: this.tileSize
         });
       }
     } else if (this.type === NodeType.POINT || this.type === NodeType.LINE || this.type === NodeType.POLYGON) {
-      this.map.addSource(this.id!, {
+      this.map?.addSource(this.id!, {
         type: 'vector',
         schema: 'xyz',
         tiles: [this.source!]
@@ -151,12 +150,23 @@ export default class MapNode {
 
   removeAll() {
     this.active = false;
-    if (!this.map) return;
     this.layers.forEach(layer => {
       layer.remove();
     });
 
-    if (this.map.getSource(this.id!)) this.map.removeSource(this.id!);
+    if (this.map?.getSource(this.id!)) this.map.removeSource(this.id!);
+  }
+
+  openAll() {
+    this.layers.forEach(layer => {
+      layer.open();
+    });
+  }
+
+  closeAll() {
+    this.layers.forEach(layer => {
+      layer.close();
+    });
   }
 
   get map() {

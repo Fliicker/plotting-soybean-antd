@@ -87,12 +87,10 @@ export default class MapScene {
 
   loadNode(id: string): boolean {
     const node = this.findNodeById(id);
-    if (node !== undefined) {
-      if (!node.active) {
-        node.loadAll();
-        // node.flyToThis();
-        return true;
-      }
+    if (node !== undefined && !node.active) {
+      node.loadAll();
+      // node.flyToThis();
+      return true;
     }
     return false;
   }
@@ -106,19 +104,30 @@ export default class MapScene {
 
   removeNode(id: string): boolean {
     const node = this.findNodeById(id);
-    if (node !== undefined) {
-      if (node.active) {
-        node.removeAll();
-        return true;
-      }
+    if (node !== undefined && node.active) {
+      node.removeAll();
+      return true;
     }
     return false;
   }
 
+  openNode(id: string) {
+    const node = this.findNodeById(id);
+    if (node !== undefined && node.active) {
+      node.openAll();
+    }
+  }
+
+  closeNode(id: string) {
+    const node = this.findNodeById(id);
+    if (node !== undefined && node.active) {
+      node.closeAll();
+    }
+  }
+
   moveNode(id: string, beforeId: string | null) {
     const node = this.findNodeById(id);
-    if (!node) return;
-    if (node.active) {
+    if (node !== undefined && node.active) {
       if (beforeId !== null) {
         const beforeNode = this.findNodeById(beforeId) ?? null;
         node.moveBeforeNode(beforeNode);

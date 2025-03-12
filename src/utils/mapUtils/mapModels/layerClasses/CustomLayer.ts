@@ -30,4 +30,12 @@ export default class CustomLayer extends MapLayer {
   remove() {
     this.emit('remove');
   }
+
+  open() {
+    this.emit('open');
+  }
+
+  close() {
+    this.emit('close');
+  }
 }
