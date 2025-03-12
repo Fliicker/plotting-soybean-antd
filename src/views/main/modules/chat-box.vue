@@ -40,14 +40,19 @@ const messages = ref<Message[]>([
 const userInput = ref<string>('');
 
 const emit = defineEmits<{
-  'execute-command': [commands: string[]];
+  onLoadNodesByName: [{ id: string; name: string }[]];
 }>();
 
-const executeTask = (branch: number, input: string[], botMsg: Message) => {
+const executeTask = (branch: number, input: { id: string; name: string }[], botMsg: Message) => {
   switch (branch) {
     case 1: {
-      emit('execute-command', input);
-      botMsg.content = '正在执行操作...';
+      if (input.length === 0) {
+        botMsg.content = `未检索到相关数据。`;
+      } else {
+        emit('onLoadNodesByName', input);
+        const names = input.map(item => item.name);
+        botMsg.content = `已检索到相关数据${names.length}条:${names.join('、')}。`;
+      }
       botMsg.loading = false;
       break;
     }
@@ -64,9 +69,12 @@ const executeTask = (branch: number, input: string[], botMsg: Message) => {
 };
 
 const processResponse = (answer: string, botMsg: Message) => {
+  console.log(answer);
+
   const parsedAnswer = JSON.parse(answer);
   const { category, content } = parsedAnswer;
-  executeTask(category, content, botMsg);
+
+  executeTask(Number.parseInt(category, 10), content, botMsg);
 };
 
 const sendMessage = async () => {
@@ -88,7 +96,6 @@ const sendMessage = async () => {
   messages.value.push(botMsg);
 
   const { error, data } = await fetchDifyResponse(userInput.value);
-  console.log(error, data);
 
   if (data) {
     processResponse(data.answer, botMsg);

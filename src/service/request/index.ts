@@ -1,9 +1,9 @@
-import type { AxiosResponse } from 'axios';
 import { BACKEND_ERROR_CODE, createFlatRequest, createRequest } from '@sa/axios';
-import { useAuthStore } from '@/store/modules/auth';
-import { localStg } from '@/utils/storage';
-import { getServiceBaseURL } from '@/utils/service';
+import type { AxiosResponse } from 'axios';
 import { $t } from '@/locales';
+import { useAuthStore } from '@/store/modules/auth';
+import { getServiceBaseURL } from '@/utils/service';
+import { localStg } from '@/utils/storage';
 import { getAuthorization, handleExpiredRequest, showErrorMsg } from './shared';
 import type { RequestInstanceState } from './type';
 
@@ -247,7 +247,8 @@ export const dataRequest = createRequest<App.Service.DemoResponse>(
 
 export const difyRequest = createFlatRequest<App.Service.Response, RequestInstanceState>(
   {
-    baseURL: otherBaseURL.dify
+    baseURL: otherBaseURL.dify,
+    timeout: 30000
   },
   {
     async onRequest(config) {

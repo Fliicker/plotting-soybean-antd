@@ -95,6 +95,16 @@ export default class MapScene {
     return false;
   }
 
+  loadNodeByName(name: string): string | null {
+    const node = this.findNodeByName(name);
+    if (node !== undefined && !node.active) {
+      node.loadAll();
+      // node.flyToThis();
+      return node.id;
+    }
+    return null;
+  }
+
   // private _removeNode(id: string) {
   //   const node = this.findNodeById(id);
   //   if (node !== undefined) {
