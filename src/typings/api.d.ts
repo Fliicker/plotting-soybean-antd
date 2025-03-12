@@ -232,4 +232,15 @@ declare namespace Api {
       [key: string]: any;
     }
   }
+
+  namespace Dify {
+    interface DifyResponse {
+      message_id: string;
+      conversation_id: string;
+      mode: string;
+      answer: string;
+      metadata: object;
+      create_at: number;
+    }
+  }
 }

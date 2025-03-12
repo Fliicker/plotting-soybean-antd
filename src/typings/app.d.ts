@@ -690,7 +690,7 @@ declare namespace App {
   /** Service namespace */
   namespace Service {
     /** Other baseURL key */
-    type OtherBaseURLKey = 'demo' | 'api';
+    type OtherBaseURLKey = 'demo' | 'data' | 'dify';
 
     interface ServiceConfigItem {
       /** The backend service base url */

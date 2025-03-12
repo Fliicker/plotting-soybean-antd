@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { h } from 'vue';
+import { h, ref } from 'vue';
 import type { CSSProperties } from 'vue';
 import { Bubble, Sender } from 'ant-design-x-vue';
 import { UserOutlined } from '@ant-design/icons-vue';
 import { Flex } from 'ant-design-vue';
 import { SimpleScrollbar } from '@sa/materials';
+import { fetchDifyResponse } from '@/service/api';
 
 const fooAvatar: CSSProperties = {
   color: '#f56a00',
@@ -16,12 +17,92 @@ const barAvatar: CSSProperties = {
   backgroundColor: '#87d068'
 };
 
-const hideAvatar: CSSProperties = {
-  visibility: 'hidden'
-};
-// import { onMounted, ref } from "vue";
+// const hideAvatar: CSSProperties = {
+//   visibility: 'hidden'
+// };
 
-// onMounted(() => {});
+// 定义消息接口
+interface Message {
+  id: number;
+  sender: 'user' | 'bot';
+  content: string;
+  loading?: boolean;
+}
+
+// 消息列表、会话 id 以及用户输入
+const messages = ref<Message[]>([
+  {
+    id: Date.now(),
+    sender: 'bot',
+    content: '你好，我是人机'
+  }
+]);
+const userInput = ref<string>('');
+
+// const emit = defineEmits<{
+//   'execute-command': [commands: string[]];
+// }>();
+
+const executeTask = (branch: number, input: object, botMsg: Message) => {
+  switch (branch) {
+    case 1: {
+      console.log(input);
+      // const commands = input as string[];
+      // emit('execute-command', commands);
+      botMsg.content = '正在执行操作...';
+      botMsg.loading = false;
+      break;
+    }
+    case 2:
+      break;
+    case 3:
+      break;
+    default: {
+      botMsg.content = '服务器繁忙，请稍后再试';
+      botMsg.loading = false;
+      break;
+    }
+  }
+};
+
+const processResponse = (answer: string, botMsg: Message) => {
+  const parsedAnswer = JSON.parse(answer);
+  const { category, content } = parsedAnswer;
+  executeTask(category, content, botMsg);
+};
+
+const sendMessage = async () => {
+  if (!userInput.value.trim()) return;
+
+  const userMsg: Message = {
+    id: Date.now(),
+    sender: 'user',
+    content: userInput.value
+  };
+  messages.value.push(userMsg);
+
+  const botMsg: Message = {
+    id: Date.now() + 1,
+    sender: 'bot',
+    content: '',
+    loading: true
+  };
+  messages.value.push(botMsg);
+
+  const { error, data } = await fetchDifyResponse(userInput.value);
+  console.log(error, data);
+
+  if (data) {
+    processResponse(data.answer, botMsg);
+  } else {
+    console.log(error);
+    botMsg.content = '服务器繁忙，请稍后再试';
+    botMsg.loading = false;
+    messages.value = [...messages.value];
+  }
+
+  userInput.value = '';
+};
 </script>
 
 <template>
@@ -36,33 +117,30 @@ const hideAvatar: CSSProperties = {
     size="small"
     class="h-full w-full rounded-md bg-tech-5"
   >
-    <!--不用small会导致body部分溢出？？？-->
+    <!-- 消息展示区域 -->
     <div class="h-[calc(100%-100px)] w-full p-3">
       <SimpleScrollbar>
         <Flex gap="middle" vertical>
-          <Bubble
-            variant="filled"
-            placement="start"
-            content="Good morning, how are you?"
-            :avatar="{ icon: h(UserOutlined), style: fooAvatar }"
-          />
-          <Bubble placement="start" content="What a beautiful day!" :styles="{ avatar: hideAvatar }" :avatar="{}" />
-          <Bubble
-            placement="end"
-            content="Hi, good morning, I'm fine!"
-            :avatar="{ icon: h(UserOutlined), style: barAvatar }"
-          />
-          <Bubble
-            placement="start"
-            content="Thank you!"
-            :avatar="{ icon: h(UserOutlined), style: fooAvatar }"
-            :loading="true"
-          />
+          <!-- 遍历消息列表，渲染每个消息气泡 -->
+          <template v-for="msg in messages" :key="msg.id">
+            <Bubble
+              :placement="msg.sender === 'bot' ? 'start' : 'end'"
+              :content="msg.content"
+              :loading="msg.loading"
+              :avatar="
+                msg.sender === 'bot'
+                  ? { icon: h(UserOutlined), style: fooAvatar }
+                  : { icon: h(UserOutlined), style: barAvatar }
+              "
+            />
+          </template>
         </Flex>
       </SimpleScrollbar>
     </div>
+    <!-- 输入框区域 -->
     <div class="bottom-0 h-100px w-full p-3">
-      <Sender />
+      <!-- Sender 组件假设支持 v-model:value 双向绑定以及发送事件 -->
+      <Sender v-model:value="userInput" @submit="sendMessage" />
     </div>
   </ACard>
 </template>

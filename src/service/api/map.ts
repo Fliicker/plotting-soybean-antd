@@ -1,8 +1,8 @@
-import { apiRequest } from '../request';
+import { dataRequest } from '../request';
 
 /** get layer tree */
 export function fetchGetLayerTree() {
-  return apiRequest<Api.Map.BaseTreeNode>({
+  return dataRequest<Api.Map.BaseTreeNode>({
     url: '/node/layerNode/getLayerTree',
     method: 'get'
   });

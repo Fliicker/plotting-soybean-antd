@@ -14,6 +14,8 @@ const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === '
 const { baseURL } = getServiceBaseURL(import.meta.env, false);
 const { otherBaseURL } = getServiceBaseURL(import.meta.env, isHttpProxy);
 
+const defyAPI = 'app-lwFX37V0X4snwoV1SwLIVpXV';
+
 export const request = createFlatRequest<App.Service.Response, RequestInstanceState>(
   {
     baseURL,
@@ -168,9 +170,9 @@ export const demoRequest = createRequest<App.Service.DemoResponse>(
   }
 );
 
-export const apiRequest = createRequest<App.Service.DemoResponse>(
+export const dataRequest = createRequest<App.Service.DemoResponse>(
   {
-    baseURL: otherBaseURL.api
+    baseURL: otherBaseURL.data
   },
   {
     async onRequest(config) {
@@ -210,4 +212,70 @@ export const apiRequest = createRequest<App.Service.DemoResponse>(
   }
 );
 
-export const mapRequestHead = `http://${window.location.host}${otherBaseURL.api}`;
+// export const difyRequest2 = createRequest<App.Service.DemoResponse>(
+//   {
+//     baseURL: otherBaseURL.dify
+//   },
+//   {
+//     async onRequest(config) {
+//       const { headers } = config;
+
+//       const Authorization = `Bearer ${defyAPI}`;
+//       Object.assign(headers, { Authorization });
+
+//       return config;
+//     },
+//     isBackendSuccess(response) {
+//       return response.status === 200;
+//     },
+//     async onBackendFail(_response) {},
+//     transformBackendResponse(response) {
+//       console.log(response);
+//       return response.data;
+//     },
+//     onError(error) {
+//       let message = error.message;
+//       // show backend error message
+//       if (error.code === BACKEND_ERROR_CODE) {
+//         message = error.response?.data?.message || message;
+//       }
+
+//       window.$message?.error(message);
+//     }
+//   }
+// );
+
+export const difyRequest = createFlatRequest<App.Service.Response, RequestInstanceState>(
+  {
+    baseURL: otherBaseURL.dify
+  },
+  {
+    async onRequest(config) {
+      const { headers } = config;
+
+      const Authorization = `Bearer ${defyAPI}`;
+      Object.assign(headers, { Authorization, 'Content-Type': 'application/json' });
+
+      return config;
+    },
+    isBackendSuccess(response) {
+      return response.status === 200;
+    },
+    transformBackendResponse(response) {
+      return response.data;
+    },
+    onError(error) {
+      // when the request is fail, you can show error message
+      let message = error.message;
+
+      // get backend error message and code
+      if (error.code === BACKEND_ERROR_CODE) {
+        message = error.response?.data?.msg || message;
+      }
+
+      showErrorMsg(request.state, message);
+    }
+  }
+);
+
+export const mapRequestHead = `http://${window.location.host}${otherBaseURL.data}`;
