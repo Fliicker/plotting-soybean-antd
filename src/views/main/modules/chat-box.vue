@@ -1,164 +1,394 @@
 <script setup lang="ts">
-import { h, ref } from 'vue';
-import type { CSSProperties } from 'vue';
+import { h, nextTick, ref } from 'vue';
+import type { Feature, GeoJsonProperties, Geometry } from 'geojson';
 import { Bubble, Sender } from 'ant-design-x-vue';
-import { UserOutlined } from '@ant-design/icons-vue';
 import { Flex } from 'ant-design-vue';
 import { SimpleScrollbar } from '@sa/materials';
+import MindElixir from 'mind-elixir';
 import { fetchDifyResponse } from '@/service/api';
 
-const fooAvatar: CSSProperties = {
-  color: '#f56a00',
-  backgroundColor: '#fde3cf'
-};
+const emit = defineEmits<{
+  onLoadNodesByName: [{ id: string; name: string }[]];
+  startDraw: [];
+  finishDraw: [];
+}>();
 
-const barAvatar: CSSProperties = {
-  color: '#fff',
-  backgroundColor: '#87d068'
-};
+const botIcon = h('div', {
+  style: {
+    width: '100%',
+    height: '100%',
+    backgroundImage: "url('/logo.png')",
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    borderRadius: '50%'
+  }
+});
+const userIcon = h('div', {
+  style: {
+    width: '100%',
+    height: '100%',
+    backgroundImage: "url('/src/assets/svg-icon/avatar.svg')",
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    borderRadius: '50%'
+  }
+});
 
-// const hideAvatar: CSSProperties = {
-//   visibility: 'hidden'
-// };
+const userInput = ref<string>('');
+const inputDisabled = ref<boolean>(false);
 
-// 定义消息接口
+const mindMapModalVisible = ref<boolean>(false);
+const modalContainerRef = ref<HTMLElement | null>(null);
+let mindMapModalInstance: any = null;
+
+const isDrawing = ref<boolean>(false);
+const currentWorkflow = ref(null);
+
+// 消息接口
 interface Message {
   id: number;
   sender: 'user' | 'bot';
   content: string;
   loading?: boolean;
+  branch?: number; // 分支号，2 表示思维导图类型，3 表示绘制任务
+  mindMapData?: any; // 格式化后的思维导图数据（MindElixir 格式）
 }
 
-// 消息列表、会话 id 以及用户输入
+// 思维导图结点
+interface MindNode {
+  topic: string;
+  id: string;
+  children: MindNode[];
+}
+
+// 消息列表
 const messages = ref<Message[]>([
   {
     id: Date.now(),
     sender: 'bot',
-    content: '你好，我是人机'
+    content:
+      '您好，我是智能问答助手，专注于整合台湾岛最新地理数据、情报分析和战略决策支持，请问有什么可以帮您解答的吗？'
   }
 ]);
-const userInput = ref<string>('');
 
-const emit = defineEmits<{
-  onLoadNodesByName: [{ id: string; name: string }[]];
-}>();
+const convertToMindElixirFormat = (data: any): MindNode => {
+  const root: MindNode = {
+    topic: '决策分析',
+    id: 'root',
+    children: []
+  };
 
-const executeTask = (branch: number, input: { id: string; name: string }[], botMsg: Message) => {
+  let nodeId = 1;
+  for (const category in data) {
+    if (Object.hasOwn(data, category)) {
+      const categoryNode: MindNode = {
+        topic: category,
+        id: `node-${nodeId}`,
+        children: []
+      };
+      nodeId += 1;
+      const subCategories = data[category];
+      for (const subCategory in subCategories) {
+        if (Object.hasOwn(subCategories, subCategory)) {
+          const subNode: MindNode = {
+            topic: subCategory,
+            id: `node-${nodeId}`,
+            children: []
+          };
+          nodeId += 1;
+
+          const factors: string[] = subCategories[subCategory];
+          console.log(factors);
+          // eslint-disable-next-line max-depth
+          for (const factor of factors) {
+            subNode.children.push({
+              topic: factor,
+              id: `node-${nodeId}`,
+              children: []
+            });
+            nodeId += 1;
+          }
+          categoryNode.children.push(subNode);
+        }
+      }
+      root.children.push(categoryNode);
+    }
+  }
+  return root;
+};
+
+const convertThemeDataToText = (data: Record<string, any[]>): string => {
+  return Object.entries(data)
+    .map(([key, items]) => {
+      // 如果 items 是数组且有内容，则抽取 name 字段
+      if (Array.isArray(items) && items.length > 0) {
+        const names = items.map(item => item.name).join('、');
+        return `${key}：${names}`;
+      }
+      return `${key}：`;
+    })
+    .join('；\n');
+};
+
+// 根据分支号调度不同任务
+const executeTask = (branch: number, input: any, botMsg: Message) => {
   switch (branch) {
     case 1: {
       if (input.length === 0) {
         botMsg.content = `未检索到相关数据。`;
       } else {
         emit('onLoadNodesByName', input);
-        const names = input.map(item => item.name);
-        botMsg.content = `已检索到相关数据${names.length}条:${names.join('、')}。`;
+        const names = input.map((item: any) => item.name);
+        botMsg.content = `已检索到${names.length}条相关数据: ${names.join(
+          '、'
+        )}。\n相关数据已添加到图层，请查看地图了解详细信息`;
       }
-      botMsg.loading = false;
       break;
     }
-    case 2:
+    case 2: {
+      try {
+        const mindMapData = convertToMindElixirFormat(input.knowledge);
+        botMsg.mindMapData = mindMapData;
+        const themeData = input.themeData as Record<string, { id: string; name: string }[]>;
+        const themeDataText = convertThemeDataToText(themeData);
+        console.log(themeDataText);
+        botMsg.content = `针对这一地理场景，我已生成一份决策思维导图，请点击下方“查看导图”按钮进行查看。\n\n同时检索到与该场景相关的主题数据，内容包括：\n${themeDataText}。\n\n主题数据已添加到图层，请查看地图了解详细信息。`;
+        const displayData = Object.values(themeData).flatMap(items => items.map(({ id, name }) => ({ id, name })));
+        emit('onLoadNodesByName', displayData);
+      } catch (err) {
+        console.error(err);
+        botMsg.content = '服务器繁忙，请稍后再试';
+      }
       break;
-    case 3:
+    }
+    case 3: {
+      botMsg.branch = 3;
+      botMsg.content = '请点击“开始绘制”按钮进入绘制模式，完成绘制后请点击“完成绘制”提交结果。';
+      currentWorkflow.value = input;
       break;
+    }
     default: {
       botMsg.content = '服务器繁忙，请稍后再试';
-      botMsg.loading = false;
       break;
     }
   }
 };
 
+// 提取标签内容（返回数组）
+const extractTagContent = (tag: string, text: string): string[] => {
+  const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'g');
+  let match;
+  const results: string[] = [];
+  while ((match = regex.exec(text)) !== null) {
+    results.push(match[1].trim());
+  }
+  return results;
+};
+
 const processResponse = (answer: string, botMsg: Message) => {
-  console.log(answer);
-
-  const parsedAnswer = JSON.parse(answer);
-  const { category, content } = parsedAnswer;
-
-  executeTask(Number.parseInt(category, 10), content, botMsg);
+  try {
+    console.log(answer);
+    const categoryMatch = extractTagContent('category', answer);
+    const category = categoryMatch && categoryMatch.length ? Number.parseInt(categoryMatch[0], 10) : null;
+    let content: any;
+    switch (category) {
+      case 1: {
+        botMsg.branch = 1;
+        const jsonContent = extractTagContent('json', answer)[0];
+        content = JSON.parse(jsonContent);
+        executeTask(1, content, botMsg);
+        break;
+      }
+      case 2: {
+        botMsg.branch = 2;
+        const think = extractTagContent('think', answer)[0];
+        const jsonContents = extractTagContent('json', answer);
+        const [knowledge, themeData] = jsonContents;
+        content = {
+          think,
+          knowledge: JSON.parse(knowledge),
+          themeData: JSON.parse(themeData)
+        };
+        executeTask(2, content, botMsg);
+        break;
+      }
+      case 3: {
+        const jsonContent = extractTagContent('json', answer)[0];
+        content = JSON.parse(jsonContent);
+        executeTask(3, content, botMsg);
+        break;
+      }
+      default: {
+        botMsg.content = '服务器繁忙，请稍后再试';
+        break;
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    botMsg.content = '服务器繁忙，请稍后再试';
+  }
 };
 
 const sendMessage = async () => {
   if (!userInput.value.trim()) return;
-
-  const userMsg: Message = {
-    id: Date.now(),
-    sender: 'user',
-    content: userInput.value
-  };
-  messages.value.push(userMsg);
-
-  const botMsg: Message = {
-    id: Date.now() + 1,
-    sender: 'bot',
-    content: '',
-    loading: true
-  };
-  messages.value.push(botMsg);
-
-  const { error, data } = await fetchDifyResponse(userInput.value);
-
-  if (data) {
-    processResponse(data.answer, botMsg);
-  } else {
-    console.log(error);
-    botMsg.content = '服务器繁忙，请稍后再试';
-    botMsg.loading = false;
-    messages.value = [...messages.value];
-  }
-
+  const tempInput = userInput.value;
   userInput.value = '';
+  nextTick(async () => {
+    inputDisabled.value = true;
+    const userMsg: Message = {
+      id: Date.now(),
+      sender: 'user',
+      content: tempInput
+    };
+    messages.value.push(userMsg);
+    const botMsg: Message = {
+      id: Date.now() + 1,
+      sender: 'bot',
+      content: '',
+      loading: true
+    };
+    messages.value.push(botMsg);
+    userInput.value = '';
+    const { error, data } = await fetchDifyResponse(tempInput);
+    if (data) {
+      processResponse(data.answer, botMsg);
+    } else {
+      console.log(error);
+      botMsg.content = '服务器繁忙，请稍后再试';
+    }
+    messages.value = [...messages.value];
+    botMsg.loading = false;
+  });
 };
+
+// 打开思维导图弹窗
+const openMindMap = (mindData: any) => {
+  mindMapModalVisible.value = true;
+  nextTick(() => {
+    if (modalContainerRef.value && mindData) {
+      if (mindMapModalInstance) {
+        mindMapModalInstance.destroy();
+      }
+      mindMapModalInstance = new MindElixir({
+        el: modalContainerRef.value,
+        direction: MindElixir.SIDE,
+        draggable: true,
+        contextMenu: true,
+        toolBar: true,
+        nodeMenu: true,
+        keypress: true
+      });
+      const modalMindData = {
+        nodeData: mindData,
+        linkData: {}
+      };
+      console.log(modalMindData);
+      mindMapModalInstance.init(modalMindData);
+    }
+  });
+};
+
+const onMindMapModalCancel = () => {
+  mindMapModalVisible.value = false;
+};
+
+const onTypingComplete = () => {
+  inputDisabled.value = false;
+};
+
+const startDraw = () => {
+  isDrawing.value = true;
+  emit('startDraw');
+};
+
+const finishDraw = () => {
+  isDrawing.value = false;
+  emit('finishDraw');
+};
+
+const processDraw = (data: Feature<Geometry, GeoJsonProperties>) => {
+  console.log(currentWorkflow.value);
+
+  console.log(data);
+};
+
+export interface ChatBoxExpose {
+  processDraw: (data: Feature<Geometry, GeoJsonProperties>) => void;
+}
+
+defineExpose({ processDraw });
 </script>
 
 <template>
   <ACard
     title="智能问答"
-    :head-style="{ height: '10%' }"
+    :head-style="{
+      height: '10%',
+      'font-size': '16px',
+      border: 'none'
+    }"
     :body-style="{
       height: '90%',
       'box-sizing': 'border-box',
-      padding: '10px'
+      padding: '0 15px 15px 15px'
     }"
     size="small"
-    class="h-full w-full rounded-md bg-tech-5"
+    class="h-full w-full border-0 rounded-md bg-tech-5"
   >
-    <!-- 消息展示区域 -->
-    <div class="h-[calc(100%-100px)] w-full p-3">
-      <SimpleScrollbar>
-        <Flex gap="middle" vertical>
-          <!-- 遍历消息列表，渲染每个消息气泡 -->
-          <template v-for="msg in messages" :key="msg.id">
-            <Bubble
-              :placement="msg.sender === 'bot' ? 'start' : 'end'"
-              :content="msg.content"
-              :loading="msg.loading"
-              :avatar="
-                msg.sender === 'bot'
-                  ? { icon: h(UserOutlined), style: fooAvatar }
-                  : { icon: h(UserOutlined), style: barAvatar }
-              "
-            />
-          </template>
-        </Flex>
-      </SimpleScrollbar>
-    </div>
-    <!-- 输入框区域 -->
-    <div class="bottom-0 h-100px w-full p-3">
-      <!-- Sender 组件假设支持 v-model:value 双向绑定以及发送事件 -->
-      <Sender v-model:value="userInput" @submit="sendMessage" />
+    <div class="h-full w-full rounded-md bg-[#223956]">
+      <div class="h-[calc(100%-100px)] w-full p-3">
+        <SimpleScrollbar>
+          <Flex gap="middle" vertical class="pt-2">
+            <template v-for="msg in messages" :key="msg.id">
+              <Bubble
+                :placement="msg.sender === 'bot' ? 'start' : 'end'"
+                :content="msg.content"
+                :loading="msg.loading"
+                :avatar="msg.sender === 'bot' ? { icon: botIcon } : { icon: userIcon }"
+                :typing="msg.sender === 'bot' ? { interval: 10 } : false"
+                @typing-complete="msg.sender === 'bot' && onTypingComplete()"
+              >
+                <template #footer>
+                  <template v-if="msg.branch === 2">
+                    <AButton type="default" size="small" @click="openMindMap(msg.mindMapData)">查看导图</AButton>
+                  </template>
+                  <template v-if="msg.branch === 3">
+                    <template v-if="!isDrawing">
+                      <AButton type="default" size="small" @click="startDraw">开始绘制</AButton>
+                    </template>
+                    <template v-else>
+                      <AButton type="default" size="small" @click="finishDraw">完成绘制</AButton>
+                    </template>
+                  </template>
+                </template>
+              </Bubble>
+            </template>
+          </Flex>
+        </SimpleScrollbar>
+      </div>
+      <div class="bottom-0 h-100px w-full p-3">
+        <Sender v-model:value="userInput" :disabled="inputDisabled" @submit="sendMessage" />
+      </div>
     </div>
   </ACard>
+  <AModal v-model:open="mindMapModalVisible" title="思维导图" width="80%" :footer="null" @cancel="onMindMapModalCancel">
+    <div ref="modalContainerRef" class="h-[600px] w-full"></div>
+  </AModal>
 </template>
 
 <style lang="scss">
 .ant-bubble-content-filled {
-  background-color: rgb(110, 150, 183) !important;
+  background-image: linear-gradient(to bottom, #30b4ee, #29a3e7) !important;
+  white-space: pre-wrap;
 }
-
 .ant-sender-content {
   height: 80px !important;
   background-color: rgb(208, 228, 247) !important;
   border-radius: 13px !important;
   overflow: auto;
+}
+.anticon-user {
+  height: 100%;
+  width: 100%;
 }
 </style>

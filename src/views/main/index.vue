@@ -3,17 +3,25 @@ import { onMounted, ref } from 'vue';
 import mapboxgl from 'mapbox-gl';
 import { SimpleScrollbar } from '@sa/materials';
 import type { AntTreeNodeCheckedEvent, AntTreeNodeDropEvent, TreeProps } from 'ant-design-vue/es/tree';
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import type { Feature, GeoJsonProperties, Geometry } from 'geojson';
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import MapScene from '@/utils/mapUtils/mapModels/MapScene';
 import { fetchGetLayerTree } from '@/service/api';
 import ChatBox from './modules/chat-box.vue';
+import type { ChatBoxExpose } from './modules/chat-box.vue';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoiZmxpY2tlcjA1NiIsImEiOiJjbGd4OXM1c3cwOWs3M21ta2RiMDhoczVnIn0.lE8NriBf_g3RZWCusw_mZA';
 
 let map: mapboxgl.Map;
+const draw: MapboxDraw = new MapboxDraw({
+  displayControlsDefault: false
+});
 
 let scene: MapScene | null = null;
 
 const mapContainer = ref<HTMLElement | null>(null);
+const chatBoxRef = ref<ChatBoxExpose | null>(null);
 const dataTree = ref<Map.LayerData[]>([]);
 const treeData = ref<TreeProps['treeData']>([]);
 const layerTreeData = ref<TreeProps['treeData']>([]);
@@ -22,6 +30,8 @@ const expandedKeys = ref<string[]>([]);
 const checkedKeys = ref<string[]>([]);
 
 const drawerOpen = ref(true);
+
+const drawData = ref<Feature<Geometry, GeoJsonProperties> | null>(null);
 
 const showDrawer = () => {
   drawerOpen.value = true;
@@ -129,6 +139,22 @@ const convertToTreeData = (layers: Map.LayerData[]): TreeProps['treeData'] => {
   }));
 };
 
+/// /////////// 地图绘制 ///////////////
+const startDraw = () => {
+  if (draw.getAll()) {
+    draw.deleteAll();
+    draw.changeMode('draw_line_string');
+  }
+};
+
+const finishDraw = () => {
+  if (draw.getAll().features.length === 0) return;
+  const drawFeature = draw.getAll().features[0];
+  drawData.value = drawFeature;
+  chatBoxRef.value?.processDraw(drawData.value);
+  draw.changeMode('simple_select');
+};
+
 onMounted(async () => {
   if (mapContainer.value) {
     map = new mapboxgl.Map({
@@ -140,6 +166,7 @@ onMounted(async () => {
     });
 
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+    map.addControl(draw);
 
     dataTree.value = (await initData()).children;
     treeData.value = convertToTreeData(dataTree.value);
@@ -246,7 +273,12 @@ onMounted(async () => {
       <AButton type="primary" @click="showDrawer">Open</AButton>
     </div>
     <div class="absolute right-5 top-1/10 h-4/5 w-1/5">
-      <ChatBox @on-load-nodes-by-name="onLoadNodesByName" />
+      <ChatBox
+        ref="chatBoxRef"
+        @on-load-nodes-by-name="onLoadNodesByName"
+        @start-draw="startDraw"
+        @finish-draw="finishDraw"
+      />
     </div>
   </div>
 </template>
