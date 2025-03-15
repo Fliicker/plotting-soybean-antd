@@ -151,8 +151,33 @@ const finishDraw = () => {
   if (draw.getAll().features.length === 0) return;
   const drawFeature = draw.getAll().features[0];
   drawData.value = drawFeature;
-  chatBoxRef.value?.processDraw(drawData.value);
+  chatBoxRef.value?.processDraw(drawData.value.geometry);
   draw.changeMode('simple_select');
+};
+
+const addAnalysisResults = (results: { id: string; name: string; name_cn: string; feature: Feature }[]) => {
+  if (!treeData.value?.find(item => item.title === '分析结果集')) {
+    treeData.value?.push({
+      key: 'analysis_result',
+      title: '分析结果集',
+      children: [],
+      isLayer: false
+    });
+  }
+  const resultList = treeData.value?.find(item => item.title === '分析结果集')?.children;
+  results.forEach(result => {
+    scene?.addTempNode(result.id, result.name, result.feature);
+    if (scene?.loadNode(result.id)) {
+      resultList?.push({
+        key: result.id,
+        title: result.name_cn,
+        children: [],
+        isLayer: true
+      });
+      layerTreeData.value = [{ title: result.name_cn, key: result.id, children: [] }, ...(layerTreeData.value || [])];
+      checkedKeys.value.push(result.id);
+    }
+  });
 };
 
 onMounted(async () => {
@@ -278,6 +303,7 @@ onMounted(async () => {
         @on-load-nodes-by-name="onLoadNodesByName"
         @start-draw="startDraw"
         @finish-draw="finishDraw"
+        @add-analysis-results="addAnalysisResults"
       />
     </div>
   </div>

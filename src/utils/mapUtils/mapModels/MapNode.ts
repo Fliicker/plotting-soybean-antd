@@ -1,3 +1,4 @@
+import type { Feature } from 'geojson';
 import { mapRequestHead } from '@/service/request';
 import PointLayer from './layerClasses/PointLayer';
 import LabelLayer from './layerClasses/LabelLayer';
@@ -33,6 +34,7 @@ export default class MapNode {
   tileSize: number = 256;
   isDemSource: boolean = false;
   active: boolean = false;
+  geojsonData: Feature | null = null;
 
   static createFromData(data: Map.LayerData, _scene: MapScene): MapNode {
     const node = new MapNode();
@@ -81,6 +83,36 @@ export default class MapNode {
       };
     } else {
       node.type = NodeType.CUSTOM;
+    }
+
+    node.genLayers();
+    return node;
+  }
+
+  // eslint-disable-next-line max-params
+  static createTempFromFeature(id: string, name: string, feature: Feature, _scene: MapScene): MapNode {
+    const node = new MapNode();
+    node.id = id;
+    node.name = name;
+    node.geojsonData = feature;
+    node.scene = _scene;
+    const type = feature.geometry.type;
+    switch (type) {
+      case 'Point': {
+        node.type = NodeType.POINT;
+        break;
+      }
+      case 'LineString': {
+        node.type = NodeType.LINE;
+        break;
+      }
+      case 'Polygon': {
+        node.type = NodeType.POLYGON;
+        break;
+      }
+      default:
+        node.type = NodeType.CUSTOM;
+        break;
     }
 
     node.genLayers();
@@ -136,11 +168,19 @@ export default class MapNode {
         });
       }
     } else if (this.type === NodeType.POINT || this.type === NodeType.LINE || this.type === NodeType.POLYGON) {
-      this.map?.addSource(this.id!, {
-        type: 'vector',
-        schema: 'xyz',
-        tiles: [this.source!]
-      });
+      if (this.geojsonData) {
+        console.log('source-loaded', this.geojsonData);
+        this.map?.addSource(this.id!, {
+          type: 'geojson',
+          data: this.geojsonData
+        });
+      } else {
+        this.map?.addSource(this.id!, {
+          type: 'vector',
+          schema: 'xyz',
+          tiles: [this.source!]
+        });
+      }
     }
 
     this.layers.forEach(layer => {

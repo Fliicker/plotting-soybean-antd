@@ -1,16 +1,24 @@
 <script setup lang="ts">
 import { h, nextTick, ref } from 'vue';
-import type { Feature, GeoJsonProperties, Geometry } from 'geojson';
+import type { Feature, Geometry } from 'geojson';
 import { Bubble, Sender } from 'ant-design-x-vue';
 import { Flex } from 'ant-design-vue';
 import { SimpleScrollbar } from '@sa/materials';
 import MindElixir from 'mind-elixir';
-import { fetchDifyResponse } from '@/service/api';
+import { fetchDifyResponse, fetchGetWorkflowResult } from '@/service/api';
 
 const emit = defineEmits<{
   onLoadNodesByName: [{ id: string; name: string }[]];
   startDraw: [];
   finishDraw: [];
+  addAnalysisResults: [
+    {
+      id: string;
+      name: string;
+      name_cn: string;
+      feature: Feature;
+    }[]
+  ];
 }>();
 
 const botIcon = h('div', {
@@ -282,7 +290,6 @@ const openMindMap = (mindData: any) => {
         nodeData: mindData,
         linkData: {}
       };
-      console.log(modalMindData);
       mindMapModalInstance.init(modalMindData);
     }
   });
@@ -306,14 +313,58 @@ const finishDraw = () => {
   emit('finishDraw');
 };
 
-const processDraw = (data: Feature<Geometry, GeoJsonProperties>) => {
-  console.log(currentWorkflow.value);
+const processDraw = async (data: Geometry) => {
+  function replaceDataNeeded(obj: any, newValue: any): any {
+    if (Array.isArray(obj)) {
+      return obj.map(item => replaceDataNeeded(item, newValue));
+    } else if (obj !== null && typeof obj === 'object') {
+      if ('data_needed' in obj) {
+        return newValue; // 直接替换整个对象
+      }
+      // eslint-disable-next-line guard-for-in
+      for (const key in obj) {
+        obj[key] = replaceDataNeeded(obj[key], newValue);
+      }
+    }
+    return obj;
+  }
 
-  console.log(data);
+  const workflow = replaceDataNeeded(currentWorkflow.value, data);
+  const result = await fetchGetWorkflowResult(workflow);
+  const analysisResults: {
+    id: string;
+    name: string;
+    name_cn: string;
+    feature: Feature;
+  }[] = [];
+  if (result.buffer_result) {
+    const bufferResult = result.buffer_result;
+    if (bufferResult.features.length !== 0) {
+      analysisResults.push({
+        id: `buffer-${Math.random().toString(36).substring(7)}`,
+        name: 'buffer_result',
+        name_cn: '缓冲区分析结果',
+        feature: bufferResult.features[0]
+      });
+    }
+  }
+  if (result.intersection_result) {
+    const intersectionResult = result.intersection_result;
+    if (intersectionResult.features.length !== 0) {
+      analysisResults.push({
+        id: `intersection-${Math.random().toString(36).substring(7)}`,
+        name: 'intersection_result',
+        name_cn: '相交分析结果',
+        feature: intersectionResult.features[0]
+      });
+    }
+  }
+
+  emit('addAnalysisResults', analysisResults);
 };
 
 export interface ChatBoxExpose {
-  processDraw: (data: Feature<Geometry, GeoJsonProperties>) => void;
+  processDraw: (data: Geometry) => void;
 }
 
 defineExpose({ processDraw });
@@ -381,12 +432,14 @@ defineExpose({ processDraw });
   background-image: linear-gradient(to bottom, #30b4ee, #29a3e7) !important;
   white-space: pre-wrap;
 }
+
 .ant-sender-content {
   height: 80px !important;
   background-color: rgb(208, 228, 247) !important;
   border-radius: 13px !important;
   overflow: auto;
 }
+
 .anticon-user {
   height: 100%;
   width: 100%;

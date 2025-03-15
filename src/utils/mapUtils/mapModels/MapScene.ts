@@ -2,8 +2,8 @@
 
 import { MapboxOverlay as DeckOverlay } from '@deck.gl/mapbox';
 import { reactive } from 'vue';
+import type { Feature } from 'geojson';
 import MapNode from './MapNode';
-
 export interface ViewState {
   center?: [number, number];
   pitch?: number;
@@ -56,6 +56,12 @@ export default class MapScene {
   }
 
   addNode(node: MapNode) {
+    this.nodes.push(node);
+    return this.nodes.indexOf(node);
+  }
+
+  addTempNode(id: string, name: string, feature: Feature) {
+    const node = MapNode.createTempFromFeature(id, name, feature, this);
     this.nodes.push(node);
     return this.nodes.indexOf(node);
   }

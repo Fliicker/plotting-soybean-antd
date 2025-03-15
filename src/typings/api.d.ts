@@ -231,6 +231,10 @@ declare namespace Api {
       children: BaseTreeNode[];
       [key: string]: any;
     }
+
+    interface WorkflowResult {
+      [key: string]: import('geojson').FeatureCollection;
+    }
   }
 
   namespace Dify {
