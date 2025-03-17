@@ -38,29 +38,47 @@ export default abstract class MapLayer {
   }
 
   genPaint() {
+    console.log(this.isGeojsonLayer);
     switch (this.type) {
       case LayerType.POINT:
-        return {
-          'circle-radius': 4,
-          'circle-color': '#007cbf',
-          'circle-opacity': 0.8,
-          'circle-stroke-width': 1,
-          'circle-stroke-color': '#ffffff'
-        };
+        return this.isGeojsonLayer
+          ? {
+              'circle-radius': 8,
+              'circle-color': '#D44F69',
+              'circle-opacity': 1,
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff'
+            }
+          : {
+              'circle-radius': 4,
+              'circle-color': '#5186D8',
+              'circle-opacity': 0.8,
+              'circle-stroke-width': 1,
+              'circle-stroke-color': '#ffffff'
+            };
       case LayerType.LINE:
-        return {
-          'line-width': 2,
-          'line-color': '#029BDD',
-          'line-opacity': 0.8
-        };
-
+        return this.isGeojsonLayer
+          ? {
+              'line-width': 3,
+              'line-color': '#F71A00'
+            }
+          : {
+              'line-width': 2,
+              'line-color': '#029BDD',
+              'line-opacity': 0.8
+            };
       case LayerType.POLYGON:
-        return {
-          'fill-color': '#04EB13',
-          'fill-opacity': 0.6,
-          'fill-outline-color': '#000000'
-        };
-
+        return this.isGeojsonLayer
+          ? {
+              'fill-color': '#E76B50',
+              'fill-opacity': 0.6,
+              'fill-outline-color': '#F71A00'
+            }
+          : {
+              'fill-color': '#04EB13',
+              'fill-opacity': 0.6,
+              'fill-outline-color': '#000000'
+            };
       case LayerType.LABEL:
         return {
           'text-color': '#630080',
@@ -93,5 +111,9 @@ export default abstract class MapLayer {
 
   get deckOverlay() {
     return this.node.deckOverlay;
+  }
+
+  get isGeojsonLayer() {
+    return this.node.geojsonData !== null;
   }
 }

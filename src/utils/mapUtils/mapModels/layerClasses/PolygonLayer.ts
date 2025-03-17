@@ -4,15 +4,24 @@ export default class PolygonLayer extends MapLayer {
   type: number = LayerType.POLYGON;
 
   load() {
-    this.map?.addLayer({
-      id: this.id,
-      type: 'fill',
-      source: this.sourceId,
-      'source-layer': this.sourceName ?? undefined,
-      minzoom: 0,
-      maxzoom: 22,
-      paint: this.genPaint()
-    });
+    if (this.isGeojsonLayer) {
+      this.map?.addLayer({
+        id: this.id,
+        type: 'fill',
+        source: this.sourceId,
+        paint: this.genPaint()
+      });
+    } else {
+      this.map?.addLayer({
+        id: this.id,
+        type: 'fill',
+        source: this.sourceId,
+        'source-layer': this.sourceName ?? undefined,
+        minzoom: 0,
+        maxzoom: 22,
+        paint: this.genPaint()
+      });
+    }
   }
 
   remove() {

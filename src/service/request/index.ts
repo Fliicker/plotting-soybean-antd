@@ -212,38 +212,29 @@ export const dataRequest = createRequest<App.Service.DemoResponse>(
   }
 );
 
-// export const difyRequest2 = createRequest<App.Service.DemoResponse>(
-//   {
-//     baseURL: otherBaseURL.dify
-//   },
-//   {
-//     async onRequest(config) {
-//       const { headers } = config;
+export const dataRequestFlat = createFlatRequest<App.Service.Response, RequestInstanceState>(
+  {
+    baseURL: otherBaseURL.data,
+    timeout: 30000
+  },
+  {
+    isBackendSuccess(response) {
+      return response.status === 200;
+    },
+    transformBackendResponse(response) {
+      return response.data;
+    },
+    onError(error) {
+      let message = error.message;
 
-//       const Authorization = `Bearer ${defyAPI}`;
-//       Object.assign(headers, { Authorization });
+      if (error.code === BACKEND_ERROR_CODE) {
+        message = error.response?.data?.msg || message;
+      }
 
-//       return config;
-//     },
-//     isBackendSuccess(response) {
-//       return response.status === 200;
-//     },
-//     async onBackendFail(_response) {},
-//     transformBackendResponse(response) {
-//       console.log(response);
-//       return response.data;
-//     },
-//     onError(error) {
-//       let message = error.message;
-//       // show backend error message
-//       if (error.code === BACKEND_ERROR_CODE) {
-//         message = error.response?.data?.message || message;
-//       }
-
-//       window.$message?.error(message);
-//     }
-//   }
-// );
+      showErrorMsg(request.state, message);
+    }
+  }
+);
 
 export const difyRequest = createFlatRequest<App.Service.Response, RequestInstanceState>(
   {

@@ -2,7 +2,6 @@
 import { h, nextTick, ref } from 'vue';
 import type { Feature, Geometry } from 'geojson';
 import { Bubble, Sender } from 'ant-design-x-vue';
-import { Flex } from 'ant-design-vue';
 import { SimpleScrollbar } from '@sa/materials';
 import MindElixir from 'mind-elixir';
 import { fetchDifyResponse, fetchGetWorkflowResult } from '@/service/api';
@@ -143,7 +142,7 @@ const executeTask = (branch: number, input: any, botMsg: Message) => {
   switch (branch) {
     case 1: {
       if (input.length === 0) {
-        botMsg.content = `未检索到相关数据。`;
+        botMsg.content = `未检索到相关数据`;
       } else {
         emit('onLoadNodesByName', input);
         const names = input.map((item: any) => item.name);
@@ -239,6 +238,10 @@ const processResponse = (answer: string, botMsg: Message) => {
 
 const sendMessage = async () => {
   if (!userInput.value.trim()) return;
+  isDrawing.value = false;
+  messages.value.forEach(message => {
+    if (message.branch === 3) delete message.branch;
+  });
   const tempInput = userInput.value;
   userInput.value = '';
   nextTick(async () => {
@@ -319,48 +322,68 @@ const processDraw = async (data: Geometry) => {
       return obj.map(item => replaceDataNeeded(item, newValue));
     } else if (obj !== null && typeof obj === 'object') {
       if ('data_needed' in obj) {
-        return newValue; // 直接替换整个对象
+        return newValue;
       }
-      // eslint-disable-next-line guard-for-in
+      const newObj: any = {};
       for (const key in obj) {
-        obj[key] = replaceDataNeeded(obj[key], newValue);
+        if (Object.hasOwn(obj, key)) {
+          newObj[key] = replaceDataNeeded(obj[key], newValue);
+        }
       }
+      return newObj;
     }
     return obj;
   }
+  inputDisabled.value = true;
+  const botMsg: Message = {
+    id: Date.now() + 1,
+    sender: 'bot',
+    content: '',
+    loading: true
+  };
+  messages.value.push(botMsg);
 
   const workflow = replaceDataNeeded(currentWorkflow.value, data);
-  const result = await fetchGetWorkflowResult(workflow);
-  const analysisResults: {
-    id: string;
-    name: string;
-    name_cn: string;
-    feature: Feature;
-  }[] = [];
-  if (result.buffer_result) {
-    const bufferResult = result.buffer_result;
-    if (bufferResult.features.length !== 0) {
-      analysisResults.push({
-        id: `buffer-${Math.random().toString(36).substring(7)}`,
-        name: 'buffer_result',
-        name_cn: '缓冲区分析结果',
-        feature: bufferResult.features[0]
-      });
+  const { error, data: result } = await fetchGetWorkflowResult(workflow);
+  if (result) {
+    const analysisResults: {
+      id: string;
+      name: string;
+      name_cn: string;
+      feature: Feature;
+    }[] = [];
+    if (result.buffer_result) {
+      const bufferResult = result.buffer_result;
+      if (bufferResult.features && bufferResult.features.length !== 0) {
+        analysisResults.push({
+          id: `buffer-${Math.random().toString(36).substring(7)}`,
+          name: 'buffer_result',
+          name_cn: '缓冲区分析结果',
+          feature: bufferResult.features[0]
+        });
+      }
     }
-  }
-  if (result.intersection_result) {
-    const intersectionResult = result.intersection_result;
-    if (intersectionResult.features.length !== 0) {
-      analysisResults.push({
-        id: `intersection-${Math.random().toString(36).substring(7)}`,
-        name: 'intersection_result',
-        name_cn: '相交分析结果',
-        feature: intersectionResult.features[0]
-      });
+    if (result.intersection_result) {
+      const intersectionResult = result.intersection_result;
+      if (intersectionResult.features && intersectionResult.features?.length !== 0) {
+        analysisResults.push({
+          id: `intersection-${Math.random().toString(36).substring(7)}`,
+          name: 'intersection_result',
+          name_cn: '相交分析结果',
+          feature: intersectionResult.features[0]
+        });
+      }
     }
-  }
 
-  emit('addAnalysisResults', analysisResults);
+    emit('addAnalysisResults', analysisResults);
+    botMsg.content = '已生成分析结果，请查看地图了解详细信息';
+  } else {
+    console.log(error);
+    botMsg.content = '服务器繁忙，请稍后再试';
+  }
+  messages.value = [...messages.value];
+  botMsg.loading = false;
+  inputDisabled.value = false;
 };
 
 export interface ChatBoxExpose {

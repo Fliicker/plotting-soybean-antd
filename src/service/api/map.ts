@@ -1,4 +1,4 @@
-import { dataRequest } from '../request';
+import { dataRequest, dataRequestFlat } from '../request';
 
 /** get layer tree */
 export function fetchGetLayerTree() {
@@ -10,7 +10,7 @@ export function fetchGetLayerTree() {
 
 /** get workflow result */
 export function fetchGetWorkflowResult(workflow: any) {
-  return dataRequest<Api.Map.WorkflowResult>({
+  return dataRequestFlat<Api.Map.WorkflowResult>({
     url: '/workflow/execute',
     method: 'post',
     data: workflow

@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import mapboxgl from 'mapbox-gl';
 import { SimpleScrollbar } from '@sa/materials';
 import type { AntTreeNodeCheckedEvent, AntTreeNodeDropEvent, TreeProps } from 'ant-design-vue/es/tree';
+import { AppstoreFilled, DatabaseFilled } from '@ant-design/icons-vue';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import type { Feature, GeoJsonProperties, Geometry } from 'geojson';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
@@ -184,7 +185,7 @@ onMounted(async () => {
   if (mapContainer.value) {
     map = new mapboxgl.Map({
       container: mapContainer.value,
-      style: 'mapbox://styles/mapbox/streets-v11',
+      style: 'mapbox://styles/mapbox/satellite-v9',
       center: [120.5174, 23.66552],
       zoom: 7,
       language: 'zh-Hans'
@@ -221,10 +222,11 @@ onMounted(async () => {
       :get-container="false"
     >
       <div class="h-full flex flex-col">
-        <div class="h-[60%] flex flex-col">
+        <div class="h-[55%] flex flex-col">
           <div
             class="h-10 flex items-center rounded-lg from-[#0d8bc1] to-[#30b4ee] bg-gradient-to-r p-4 text-base font-bold"
           >
+            <DatabaseFilled class="mr-1.5" />
             数据目录
           </div>
           <div class="flex-1 overflow-auto p-4">
@@ -258,6 +260,7 @@ onMounted(async () => {
           <div
             class="h-10 flex items-center rounded-lg from-[#0d8bc1] to-[#30b4ee] bg-gradient-to-r p-4 text-base font-bold"
           >
+            <AppstoreFilled class="mr-1.5" />
             图层管理
           </div>
           <div class="flex-1 overflow-auto p-4">
@@ -287,6 +290,7 @@ onMounted(async () => {
                     <template v-else>{{ title }}</template>
                   </template>
                 </ATree>
+                <AEmpty v-if="layerTreeData && layerTreeData.length === 0" />
               </SimpleScrollbar>
             </ACard>
           </div>
