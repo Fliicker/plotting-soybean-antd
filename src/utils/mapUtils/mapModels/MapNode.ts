@@ -5,6 +5,7 @@ import LabelLayer from './layerClasses/LabelLayer';
 import LineLayer from './layerClasses/LineLayer';
 import PolygonLayer from './layerClasses/PolygonLayer';
 import RasterLayer from './layerClasses/RasterLayer';
+import ThreeDLayer from './layerClasses/ThreeDLayer';
 import CustomLayer from './layerClasses/CustomLayer';
 import type MapLayer from './MapLayer';
 import type MapScene from './MapScene';
@@ -140,6 +141,10 @@ export default class MapNode {
       }
       case NodeType.RASTER: {
         this.addLayer(new RasterLayer(this));
+        break;
+      }
+      case NodeType.THREED: {
+        this.addLayer(new ThreeDLayer(this));
         break;
       }
       case NodeType.CUSTOM: {

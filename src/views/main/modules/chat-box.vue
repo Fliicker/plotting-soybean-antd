@@ -2,9 +2,14 @@
 import { h, nextTick, ref } from 'vue';
 import type { Feature, Geometry } from 'geojson';
 import { Bubble, Sender } from 'ant-design-x-vue';
+import type { BubbleProps } from 'ant-design-x-vue';
+import { Typography } from 'ant-design-vue';
+import markdownit from 'markdown-it';
 import { SimpleScrollbar } from '@sa/materials';
 import MindElixir from 'mind-elixir';
 import { fetchDifyResponse, fetchGetWorkflowResult } from '@/service/api';
+
+defineOptions({ name: 'AXBubbleMarkdownSetup' });
 
 const emit = defineEmits<{
   onLoadNodesByName: [{ id: string; name: string }[]];
@@ -77,6 +82,14 @@ const messages = ref<Message[]>([
       '您好，我是智能问答助手，专注于整合台湾岛最新地理数据、情报分析和战略决策支持，请问有什么可以帮您解答的吗？'
   }
 ]);
+
+// 思考过程显示相关配置
+const md = markdownit({ html: true, breaks: true });
+
+const renderMarkdown: BubbleProps['messageRender'] = content =>
+  h(Typography, null, {
+    default: () => h('div', { innerHTML: md.render(content) })
+  });
 
 const convertToMindElixirFormat = (data: any): MindNode => {
   const root: MindNode = {
@@ -159,7 +172,15 @@ const executeTask = (branch: number, input: any, botMsg: Message) => {
         const themeData = input.themeData as Record<string, { id: string; name: string }[]>;
         const themeDataText = convertThemeDataToText(themeData);
         console.log(themeDataText);
-        botMsg.content = `针对这一地理场景，我已生成一份决策思维导图，请点击下方“查看导图”按钮进行查看。\n\n同时检索到与该场景相关的主题数据，内容包括：\n${themeDataText}。\n\n主题数据已添加到图层，请查看地图了解详细信息。`;
+        const thinkContent = input.think
+          .split('\n')
+          .map((line: string) => `> ${line}`)
+          .join('\n');
+        botMsg.content = `
+${thinkContent}
+
+针对这一地理场景，我已生成一份决策思维导图，请点击下方"查看导图"按钮进行查看。\n\n同时检索到与该场景相关的主题数据，内容包括：\n${themeDataText}。\n\n主题数据已添加到图层，请查看地图了解详细信息。
+          `.trim();
         const displayData = Object.values(themeData).flatMap(items => items.map(({ id, name }) => ({ id, name })));
         emit('onLoadNodesByName', displayData);
       } catch (err) {
@@ -170,7 +191,7 @@ const executeTask = (branch: number, input: any, botMsg: Message) => {
     }
     case 3: {
       botMsg.branch = 3;
-      botMsg.content = '请点击“开始绘制”按钮进入绘制模式，完成绘制后请点击“完成绘制”提交结果。';
+      botMsg.content = '请点击"开始绘制"按钮进入绘制模式，完成绘制后请点击"完成绘制"提交结果。';
       currentWorkflow.value = input;
       break;
     }
@@ -216,6 +237,7 @@ const processResponse = (answer: string, botMsg: Message) => {
           knowledge: JSON.parse(knowledge),
           themeData: JSON.parse(themeData)
         };
+        console.log(think);
         executeTask(2, content, botMsg);
         break;
       }
@@ -420,6 +442,7 @@ defineExpose({ processDraw });
                 :loading="msg.loading"
                 :avatar="msg.sender === 'bot' ? { icon: botIcon } : { icon: userIcon }"
                 :typing="msg.sender === 'bot' ? { interval: 10 } : false"
+                :message-render="msg.sender === 'bot' && msg.branch === 2 ? renderMarkdown : undefined"
                 @typing-complete="msg.sender === 'bot' && onTypingComplete()"
               >
                 <template #footer>
@@ -454,6 +477,27 @@ defineExpose({ processDraw });
 .ant-bubble-content-filled {
   background-image: linear-gradient(to bottom, #30b4ee, #29a3e7) !important;
   white-space: pre-wrap;
+
+  .ant-typography {
+    color: #000000;
+
+    p {
+      color: #000000;
+      margin-bottom: 0;
+    }
+
+    blockquote {
+      color: #000000;
+      margin: 0;
+      padding-left: 1em;
+      border-left: 4px solid rgba(0, 0, 0, 0.2);
+
+      p {
+        color: #313131;
+        margin-bottom: 0;
+      }
+    }
+  }
 }
 
 .ant-sender-content {
