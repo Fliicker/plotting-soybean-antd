@@ -75,7 +75,7 @@ export default class MapNode {
       }
     } else if (category === '3DTiles') {
       node.type = NodeType.THREED;
-      node.source = `http://${window.location.host}${import.meta.env.VITE_BACK_SERVER}/resource/3DTiles/${data.id}/tileset.json`;
+      node.source = `${mapRequestHead}/resource/3DTiles/${data.id}/tileset.json`;
       node.viewState = {
         center: [119.134, 34.876],
         zoom: 11,
@@ -159,19 +159,24 @@ export default class MapNode {
   loadAll() {
     this.active = true;
     if (this.type === NodeType.RASTER) {
-      if (this.isDemSource === true) {
-        this.map?.addSource(this.id!, {
-          type: 'raster-dem',
-          tiles: [this.source!],
-          tileSize: this.tileSize
-        });
-      } else {
-        this.map?.addSource(this.id!, {
-          type: 'raster',
-          tiles: [this.source!],
-          tileSize: this.tileSize
-        });
-      }
+      // if (this.isDemSource === true) {
+      //   this.map?.addSource(this.id!, {
+      //     type: 'raster-dem',
+      //     tiles: [this.source!],
+      //     tileSize: this.tileSize
+      //   });
+      // } else {
+      //   this.map?.addSource(this.id!, {
+      //     type: 'raster',
+      //     tiles: [this.source!],
+      //     tileSize: this.tileSize
+      //   });
+      // }
+      this.map?.addSource(this.id!, {
+        type: 'raster',
+        tiles: [this.source!],
+        tileSize: this.tileSize
+      });
     } else if (this.type === NodeType.POINT || this.type === NodeType.LINE || this.type === NodeType.POLYGON) {
       if (this.geojsonData) {
         console.log('source-loaded', this.geojsonData);

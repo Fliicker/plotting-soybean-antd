@@ -42,14 +42,11 @@ export default class ThreeDLayer extends MapLayer {
             console.error('TilesetError:', error);
           },
           onTilesetLoad: (tileset: Tileset3D): void => {
-            const center = tileset.cartographicCenter;
-            if (center && this.deckOverlay) {
-              (this.deckOverlay as any).setProps({
-                initialViewState: {
-                  longitude: center[0],
-                  latitude: center[1],
-                  transitionDuration: 1000
-                }
+            const { cartographicCenter, zoom } = tileset;
+            if (cartographicCenter && this.deckOverlay) {
+              this.map?.flyTo({
+                center: [cartographicCenter[0], cartographicCenter[1]],
+                zoom
               });
             }
           },
