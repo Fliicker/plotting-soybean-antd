@@ -152,16 +152,21 @@ const convertThemeDataToText = (data: Record<string, any[]>): string => {
 
 // 根据分支号调度不同任务
 const executeTask = (branch: number, input: any, botMsg: Message) => {
+  const thinkContent = input.think
+    .split('\n')
+    .map((line: string) => `> ${line}`)
+    .join('\n');
+  console.log(thinkContent);
+
   switch (branch) {
     case 1: {
-      if (input.length === 0) {
-        botMsg.content = `未检索到相关数据`;
+      const themeData = input.themeData;
+      if (themeData.length === 0) {
+        botMsg.content = `${thinkContent}\n\n未检索到相关数据`;
       } else {
-        emit('onLoadNodesByName', input);
-        const names = input.map((item: any) => item.name);
-        botMsg.content = `已检索到${names.length}条相关数据: ${names.join(
-          '、'
-        )}。\n相关数据已添加到图层，请查看地图了解详细信息`;
+        emit('onLoadNodesByName', themeData);
+        const names = themeData.map((item: any) => item.name);
+        botMsg.content = `${thinkContent}\n\n已检索到${names.length}条相关数据: ${names.join('、')}。\n相关数据已添加到图层，请查看地图了解详细信息`;
       }
       break;
     }
@@ -172,10 +177,7 @@ const executeTask = (branch: number, input: any, botMsg: Message) => {
         const themeData = input.themeData as Record<string, { id: string; name: string }[]>;
         const themeDataText = convertThemeDataToText(themeData);
         console.log(themeDataText);
-        const thinkContent = input.think
-          .split('\n')
-          .map((line: string) => `> ${line}`)
-          .join('\n');
+
         botMsg.content = `
 ${thinkContent}
 
@@ -191,8 +193,9 @@ ${thinkContent}
     }
     case 3: {
       botMsg.branch = 3;
-      botMsg.content = '请点击"开始绘制"按钮进入绘制模式，完成绘制后请点击"完成绘制"提交结果。';
-      currentWorkflow.value = input;
+      botMsg.content = `${thinkContent}\n\n请点击"开始绘制"按钮进入绘制模式，完成绘制后请点击"完成绘制"提交结果。`;
+      console.log(input.workflow);
+      currentWorkflow.value = input.workflow;
       break;
     }
     default: {
@@ -222,8 +225,13 @@ const processResponse = (answer: string, botMsg: Message) => {
     switch (category) {
       case 1: {
         botMsg.branch = 1;
+        console.log(answer);
+        const think = extractTagContent('think', answer)[0];
         const jsonContent = extractTagContent('json', answer)[0];
-        content = JSON.parse(jsonContent);
+        content = {
+          think,
+          themeData: JSON.parse(jsonContent)
+        };
         executeTask(1, content, botMsg);
         break;
       }
@@ -242,8 +250,13 @@ const processResponse = (answer: string, botMsg: Message) => {
         break;
       }
       case 3: {
+        console.log(answer);
+        const think = extractTagContent('think', answer)[0];
         const jsonContent = extractTagContent('json', answer)[0];
-        content = JSON.parse(jsonContent);
+        content = {
+          think,
+          workflow: JSON.parse(jsonContent)
+        };
         executeTask(3, content, botMsg);
         break;
       }
@@ -442,7 +455,7 @@ defineExpose({ processDraw });
                 :loading="msg.loading"
                 :avatar="msg.sender === 'bot' ? { icon: botIcon } : { icon: userIcon }"
                 :typing="msg.sender === 'bot' ? { interval: 10 } : false"
-                :message-render="msg.sender === 'bot' && msg.branch === 2 ? renderMarkdown : undefined"
+                :message-render="msg.sender === 'bot' && msg.branch !== undefined ? renderMarkdown : undefined"
                 @typing-complete="msg.sender === 'bot' && onTypingComplete()"
               >
                 <template #footer>
