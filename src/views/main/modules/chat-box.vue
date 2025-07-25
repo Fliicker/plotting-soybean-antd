@@ -79,7 +79,7 @@ const messages = ref<Message[]>([
     id: Date.now(),
     sender: 'bot',
     content:
-      '您好，我是智能问答助手，专注于整合台湾岛最新地理数据、情报分析和战略决策支持，请问有什么可以帮您解答的吗？'
+      '欢迎访问东盟地理信息智能服务平台，我是您的AI助手，可为您提供东盟区域的地理数据查询、智能推荐与专题分析服务，请问有什么可以帮您解答的吗？'
   }
 ]);
 
@@ -166,7 +166,9 @@ const executeTask = (branch: number, input: any, botMsg: Message) => {
       } else {
         emit('onLoadNodesByName', themeData);
         const names = themeData.map((item: any) => item.name);
-        botMsg.content = `${thinkContent}\n\n已检索到${names.length}条相关数据: ${names.join('、')}。\n相关数据已添加到图层，请查看地图了解详细信息`;
+        botMsg.content = `${thinkContent}\n\n已检索到${
+          names.length
+        }条相关数据: ${names.join('、')}。\n相关数据已添加到图层，请查看地图了解详细信息`;
       }
       break;
     }

@@ -16,7 +16,8 @@ export default class ThreeDLayer extends MapLayer {
         new Tile3DLayer({
           id: this.id,
           name: this.id,
-          data: this.sourceUrl || '',
+          // data: this.sourceUrl || '',
+          data: 'http://172.21.212.60:8072/31434152/31434152_n.json',
           loader: Tiles3DLoader,
           extruded: true, // 设置3D功能
           opacity: 1, // 设置透明度

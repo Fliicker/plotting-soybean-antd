@@ -5,6 +5,8 @@ export default class LabelLayer extends MapLayer {
 
   load() {
     if (!this.isGeojsonLayer) {
+      console.log(this.labelField, this.genPaint());
+
       this.map?.addLayer({
         id: this.id,
         type: 'symbol',
@@ -15,7 +17,7 @@ export default class LabelLayer extends MapLayer {
         layout: {
           'text-field': ['get', this.labelField],
           'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-          'text-size': ['interpolate', ['linear'], ['zoom'], 2, 0, 5, 7, 15, 12, 22, 28],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 2, 5, 5, 12, 15, 17, 22, 28],
           'text-offset': [0, 1.5],
           'text-max-width': 10,
           'symbol-sort-key': 999

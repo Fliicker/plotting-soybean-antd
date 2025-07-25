@@ -186,8 +186,8 @@ onMounted(async () => {
     map = new mapboxgl.Map({
       container: mapContainer.value,
       style: 'mapbox://styles/mapbox/satellite-v9',
-      center: [120.5174, 23.66552],
-      zoom: 7,
+      center: [115.43530389617354, 7.325620166519911],
+      zoom: 3.6,
       language: 'zh-Hans'
     });
 
@@ -290,7 +290,7 @@ onMounted(async () => {
                     <template v-else>{{ title }}</template>
                   </template>
                 </ATree>
-                <AEmpty v-if="layerTreeData && layerTreeData.length === 0" />
+                <AEmpty v-if="layerTreeData && layerTreeData.length === 0" class="absolute top-10 h-full w-full" />
               </SimpleScrollbar>
             </ACard>
           </div>

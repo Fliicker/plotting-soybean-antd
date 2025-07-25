@@ -83,8 +83,9 @@ export default abstract class MapLayer {
         return {
           'text-color': '#630080',
           'text-halo-color': '#fff',
-          'text-opacity': ['step', ['zoom'], 0, 10, 1],
-          'text-halo-width': ['interpolate', ['linear'], ['zoom'], 1, 0, 5, 0.2, 9, 0.1, 10, 0.5, 22, 1]
+          // 'text-halo-width': ['interpolate', ['linear'], ['zoom'], 1, 0, 5, 0.2, 9, 0.1, 10, 0.5, 22, 1]
+          'text-halo-width': 0.8,
+          'text-opacity': ['step', ['zoom'], 0, 5, 1]
         };
 
       default:

@@ -19,10 +19,10 @@ export default class MapScene {
     getCursor: () => 'inherit' // deck鼠标指针继承自mapbox
   });
   viewState: ViewState = {
-    center: [118.5, 34.5],
+    center: [121.58183804471179, 3.5163677796196424],
     pitch: 0,
     bearing: 0,
-    zoom: 7
+    zoom: 3.6
   };
   _nodeStatus = reactive<Record<string, boolean>>({});
   nodeStatus: Record<string, boolean> | null = null; // 代理对象，用于监听nodeStatus变化

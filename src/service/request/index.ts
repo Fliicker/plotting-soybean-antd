@@ -14,7 +14,8 @@ const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === '
 const { baseURL } = getServiceBaseURL(import.meta.env, false);
 const { otherBaseURL } = getServiceBaseURL(import.meta.env, isHttpProxy);
 
-const defyAPI = 'app-lwFX37V0X4snwoV1SwLIVpXV';
+// const defyAPI = 'app-lwFX37V0X4snwoV1SwLIVpXV';
+const defyAPI = 'app-lFEpKbIBGMORGOL3Rc5U3x6k'; // 东盟
 
 export const request = createFlatRequest<App.Service.Response, RequestInstanceState>(
   {
