@@ -64,7 +64,7 @@ export default class MapNode {
         node.isDemSource = true;
       }
     } else if (category === 'vector') {
-      node.labelField = usage.visualizationField;
+      node.labelField = usage.visualizationField || null;
       node.source = `${mapRequestHead}/resource/vector/getMVT/${data.id}/{z}/{x}/{y}`;
       if (usage.type === 'point') {
         node.type = NodeType.POINT;
@@ -75,7 +75,7 @@ export default class MapNode {
       }
     } else if (category === '3DTiles') {
       node.type = NodeType.THREED;
-      node.source = `${mapRequestHead}/resource/3DTiles/${data.id}/tileset.json`;
+      node.source = `${mapRequestHead}/get3DTiles/${data.id}/tileset.json`;
       node.viewState = {
         center: [119.134, 34.876],
         zoom: 11,
@@ -157,45 +157,63 @@ export default class MapNode {
   }
 
   loadAll() {
-    this.active = true;
-    if (this.type === NodeType.RASTER) {
-      // if (this.isDemSource === true) {
-      //   this.map?.addSource(this.id!, {
-      //     type: 'raster-dem',
-      //     tiles: [this.source!],
-      //     tileSize: this.tileSize
-      //   });
-      // } else {
-      //   this.map?.addSource(this.id!, {
-      //     type: 'raster',
-      //     tiles: [this.source!],
-      //     tileSize: this.tileSize
-      //   });
-      // }
-      this.map?.addSource(this.id!, {
-        type: 'raster',
-        tiles: [this.source!],
-        tileSize: this.tileSize
-      });
-    } else if (this.type === NodeType.POINT || this.type === NodeType.LINE || this.type === NodeType.POLYGON) {
-      if (this.geojsonData) {
-        console.log('source-loaded', this.geojsonData);
-        this.map?.addSource(this.id!, {
-          type: 'geojson',
-          data: this.geojsonData
-        });
-      } else {
-        this.map?.addSource(this.id!, {
-          type: 'vector',
-          schema: 'xyz',
-          tiles: [this.source!]
-        });
-      }
+    // 确保样式加载完成后再添加 source/layer
+    if (this.map && !this.map.isStyleLoaded()) {
+      this.map.once('load', () => this.loadAll());
+      return;
     }
 
-    this.layers.forEach(layer => {
-      layer.load();
-    });
+    this.active = true;
+    console.log(`加载图层节点: ${this.id}, 类型: ${this.type}, 数据源: ${this.source}`);
+
+    try {
+      if (this.type === NodeType.RASTER) {
+        // if (this.isDemSource === true) {
+        //   this.map?.addSource(this.id!, {
+        //     type: 'raster-dem',
+        //     tiles: [this.source!],
+        //     tileSize: this.tileSize
+        //   });
+        // } else {
+        //   this.map?.addSource(this.id!, {
+        //     type: 'raster',
+        //     tiles: [this.source!],
+        //     tileSize: this.tileSize
+        //   });
+        // }
+        this.map?.addSource(this.id!, {
+          type: 'raster',
+          tiles: [this.source!],
+          tileSize: this.tileSize
+        });
+        console.log(`栅格图层源已添加: ${this.id}`);
+      } else if (this.type === NodeType.POINT || this.type === NodeType.LINE || this.type === NodeType.POLYGON) {
+        if (this.geojsonData) {
+          console.log('使用GeoJSON数据加载图层', this.geojsonData);
+          this.map?.addSource(this.id!, {
+            type: 'geojson',
+            data: this.geojsonData
+          });
+        } else {
+          console.log(`使用矢量瓦片加载图层: ${this.source}`);
+          this.map?.addSource(this.id!, {
+            type: 'vector',
+            // scheme 默认为 'xyz'，此处显式指定以防后台为 TMS
+            scheme: 'xyz',
+            tiles: [this.source!]
+          });
+        }
+        console.log(`矢量图层源已添加: ${this.id}`);
+      }
+
+      this.layers.forEach(layer => {
+        console.log(`加载图层: ${layer.id}`);
+        layer.load();
+      });
+      console.log(`图层节点 ${this.id} 加载完成`);
+    } catch (error) {
+      console.error(`加载图层节点 ${this.id} 时出错:`, error);
+    }
   }
 
   removeAll() {
@@ -208,13 +226,17 @@ export default class MapNode {
   }
 
   openAll() {
+    console.log(`显示图层节点 ${this.id} 的所有图层`);
     this.layers.forEach(layer => {
+      console.log(`显示图层: ${layer.id}`);
       layer.open();
     });
   }
 
   closeAll() {
+    console.log(`隐藏图层节点 ${this.id} 的所有图层`);
     this.layers.forEach(layer => {
+      console.log(`隐藏图层: ${layer.id}`);
       layer.close();
     });
   }

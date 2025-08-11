@@ -4,7 +4,7 @@ export default class LabelLayer extends MapLayer {
   type: number = LayerType.LABEL;
 
   load() {
-    if (!this.isGeojsonLayer) {
+    if (!this.isGeojsonLayer && this.labelField) {
       console.log(this.labelField, this.genPaint());
 
       this.map?.addLayer({
@@ -24,6 +24,8 @@ export default class LabelLayer extends MapLayer {
         },
         paint: this.genPaint()
       });
+    } else if (!this.isGeojsonLayer && !this.labelField) {
+      console.warn(`LabelLayer 跳过：缺少 labelField，source=${this.sourceId}`);
     }
   }
 

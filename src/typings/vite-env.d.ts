@@ -105,6 +105,8 @@ declare namespace Env {
     readonly VITE_STORAGE_PREFIX?: string;
     /** Whether to automatically detect updates after configuring application packaging */
     readonly VITE_AUTOMATICALLY_DETECT_UPDATE?: CommonType.YesOrNo;
+    /** Mapbox access token for map services */
+    readonly VITE_MAPBOX_ACCESS_TOKEN?: string;
   }
 }
 

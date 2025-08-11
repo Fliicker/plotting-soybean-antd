@@ -14,6 +14,13 @@ const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === '
 const { baseURL } = getServiceBaseURL(import.meta.env, false);
 const { otherBaseURL } = getServiceBaseURL(import.meta.env, isHttpProxy);
 
+// 调试信息
+console.log('=== API 配置调试 ===');
+console.log('isHttpProxy:', isHttpProxy);
+console.log('baseURL:', baseURL);
+console.log('otherBaseURL:', otherBaseURL);
+console.log('otherBaseURL.data:', otherBaseURL.data);
+
 // const defyAPI = 'app-lwFX37V0X4snwoV1SwLIVpXV';
 const defyAPI = 'app-lFEpKbIBGMORGOL3Rc5U3x6k'; // 东盟
 
@@ -173,7 +180,7 @@ export const demoRequest = createRequest<App.Service.DemoResponse>(
 
 export const dataRequest = createRequest<App.Service.DemoResponse>(
   {
-    baseURL: otherBaseURL.data
+    baseURL: otherBaseURL.data || 'http://localhost:8765/api/v0'
   },
   {
     async onRequest(config) {
@@ -215,7 +222,7 @@ export const dataRequest = createRequest<App.Service.DemoResponse>(
 
 export const dataRequestFlat = createFlatRequest<App.Service.Response, RequestInstanceState>(
   {
-    baseURL: otherBaseURL.data,
+    baseURL: otherBaseURL.data || 'http://localhost:8765/api/v0',
     timeout: 30000
   },
   {
@@ -271,4 +278,8 @@ export const difyRequest = createFlatRequest<App.Service.Response, RequestInstan
   }
 );
 
-export const mapRequestHead = `http://${window.location.host}${otherBaseURL.data}`;
+export const mapRequestHead = otherBaseURL.data || 'http://localhost:8765/api/v0';
+
+// 调试信息
+console.log('=== 地图请求头调试 ===');
+console.log('mapRequestHead:', mapRequestHead);

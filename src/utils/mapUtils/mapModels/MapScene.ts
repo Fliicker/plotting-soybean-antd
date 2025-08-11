@@ -161,6 +161,11 @@ export default class MapScene {
     return this.nodes.find(node => node.name === name);
   }
 
+  isNodeActive(id: string): boolean {
+    const node = this.findNodeById(id);
+    return node ? node.active : false;
+  }
+
   flyToThis() {
     this.map.easeTo(this.viewState);
   }

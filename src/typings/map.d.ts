@@ -4,7 +4,7 @@ declare namespace Map {
     layerName: string | null;
     tableName: string | null;
     category: string | null;
-    usage: any;
+    usage: Record<string, string> | null;
     children: BaseTreeNode[];
     [key: string]: any;
   }
