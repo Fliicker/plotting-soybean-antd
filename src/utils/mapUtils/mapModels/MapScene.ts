@@ -170,6 +170,95 @@ export default class MapScene {
     this.map.easeTo(this.viewState);
   }
 
+  /**
+   * 查询指定图层的要素属性
+   *
+   * @param nodeId 节点ID
+   * @param filter 可选的过滤条件
+   * @returns 要素数组
+   */
+  queryLayerFeatures(nodeId: string, filter?: any[]): any[] {
+    const node = this.findNodeById(nodeId);
+    if (!node) {
+      console.warn(`图层 ${nodeId} 未找到`);
+      return [];
+    }
+
+    if (!node.active) {
+      console.warn(`图层 ${nodeId} 未激活`);
+      return [];
+    }
+
+    try {
+      let features: any[] = [];
+
+      // 对于矢量图层，尝试查询源要素
+      if (node.type === 0 || node.type === 1 || node.type === 2) {
+        // POINT, LINE, POLYGON
+        try {
+          // 尝试不同的sourceLayer名称
+          const sourceLayerNames = ['default', 'data', node.name, undefined];
+
+          for (const sourceLayer of sourceLayerNames) {
+            try {
+              features = this.map.querySourceFeatures(nodeId, {
+                sourceLayer: sourceLayer || undefined,
+                filter
+              });
+
+              if (features && features.length > 0) {
+                console.log(`通过sourceLayer "${sourceLayer}" 查询到 ${features.length} 个要素`);
+                break;
+              }
+            } catch (e) {
+              // 继续尝试下一个sourceLayer
+              continue;
+            }
+          }
+        } catch (error) {
+          console.warn(`querySourceFeatures 失败:`, error);
+        }
+      }
+
+      // 如果源查询没有结果，尝试查询渲染的要素
+      if (!features || features.length === 0) {
+        try {
+          const layerIds = node.layers
+            .map(layer => layer.id)
+            .filter(id => {
+              // 确保图层存在
+              return this.map.getLayer(id);
+            });
+
+          if (layerIds.length > 0) {
+            features = this.map.queryRenderedFeatures({
+              layers: layerIds,
+              filter
+            });
+
+            if (features && features.length > 0) {
+              console.log(`通过queryRenderedFeatures查询到 ${features.length} 个要素`);
+            }
+          }
+        } catch (error) {
+          console.warn(`queryRenderedFeatures 失败:`, error);
+        }
+      }
+
+      // 对于GeoJSON数据，直接从节点获取
+      if ((!features || features.length === 0) && node.geojsonData) {
+        console.log(`从GeoJSON数据获取要素`);
+        features = [node.geojsonData];
+      }
+
+      console.log(`图层 ${nodeId} 最终查询到 ${features.length} 个要素`);
+      return features || [];
+    } catch (error) {
+      console.error(`查询图层 ${nodeId} 要素失败:`, error);
+      return [];
+    }
+  }
+
   get terrainId(): string | null {
     const terrain = this.map.getTerrain();
     if (terrain === null || terrain === undefined) return null;

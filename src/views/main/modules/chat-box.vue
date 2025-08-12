@@ -7,7 +7,7 @@ import { Typography } from 'ant-design-vue';
 import markdownit from 'markdown-it';
 import { SimpleScrollbar } from '@sa/materials';
 import MindElixir from 'mind-elixir';
-import { fetchDifyResponse, fetchGetWorkflowResult } from '@/service/api';
+import { fetchDifyResponse } from '@/service/api';
 
 defineOptions({ name: 'AXBubbleMarkdownSetup' });
 
@@ -323,7 +323,6 @@ const openMindMap = (mindData: any) => {
         draggable: true,
         contextMenu: true,
         toolBar: true,
-        nodeMenu: true,
         keypress: true
       });
       const modalMindData = {
@@ -381,42 +380,17 @@ const processDraw = async (data: Geometry) => {
   messages.value.push(botMsg);
 
   const workflow = replaceDataNeeded(currentWorkflow.value, data);
-  const { error, data: result } = await fetchGetWorkflowResult(workflow);
-  if (result) {
-    const analysisResults: {
-      id: string;
-      name: string;
-      name_cn: string;
-      feature: Feature;
-    }[] = [];
-    if (result.buffer_result) {
-      const bufferResult = result.buffer_result;
-      if (bufferResult.features && bufferResult.features.length !== 0) {
-        analysisResults.push({
-          id: `buffer-${Math.random().toString(36).substring(7)}`,
-          name: 'buffer_result',
-          name_cn: '缓冲区分析结果',
-          feature: bufferResult.features[0]
-        });
-      }
-    }
-    if (result.intersection_result) {
-      const intersectionResult = result.intersection_result;
-      if (intersectionResult.features && intersectionResult.features?.length !== 0) {
-        analysisResults.push({
-          id: `intersection-${Math.random().toString(36).substring(7)}`,
-          name: 'intersection_result',
-          name_cn: '相交分析结果',
-          feature: intersectionResult.features[0]
-        });
-      }
-    }
+  // TODO: fetchGetWorkflowResult 函数尚未实现，临时处理
+  console.log('Workflow to be processed:', workflow);
 
-    emit('addAnalysisResults', analysisResults);
-    botMsg.content = '已生成分析结果，请查看地图了解详细信息';
-  } else {
-    console.log(error);
-    botMsg.content = '服务器繁忙，请稍后再试';
+  // 临时的简单处理逻辑
+  try {
+    // 这里应该调用 fetchGetWorkflowResult(workflow)
+    // 但由于该函数不存在，暂时提供一个简单的回退
+    botMsg.content = '分析功能正在开发中，请稍后再试';
+  } catch (error) {
+    console.error('Workflow processing error:', error);
+    botMsg.content = '处理过程中发生错误，请稍后再试';
   }
   messages.value = [...messages.value];
   botMsg.loading = false;

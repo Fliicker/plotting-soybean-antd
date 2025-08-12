@@ -3,12 +3,13 @@ import { onMounted, ref } from 'vue';
 import mapboxgl from 'mapbox-gl';
 import { SimpleScrollbar } from '@sa/materials';
 import type { AntTreeNodeCheckedEvent, AntTreeNodeDropEvent, TreeProps } from 'ant-design-vue/es/tree';
-import { AppstoreFilled, DatabaseFilled } from '@ant-design/icons-vue';
+import { AppstoreFilled, DatabaseFilled, DeleteOutlined, TableOutlined, ZoomInOutlined } from '@ant-design/icons-vue';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import type { Feature, GeoJsonProperties, Geometry } from 'geojson';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import MapScene from '@/utils/mapUtils/mapModels/MapScene';
 import { fetchGetLayerTree } from '@/service/api';
+import AttributeTableWindow from '@/components/common/AttributeTableWindow.vue';
 import ChatBox from './modules/chat-box.vue';
 import type { ChatBoxExpose } from './modules/chat-box.vue';
 
@@ -38,6 +39,11 @@ const drawData = ref<Feature<Geometry, GeoJsonProperties> | null>(null);
 
 // 已提示过错误的 sourceId 集合，避免重复打扰
 const warnedSourceIds = new Set<string>();
+
+// 属性表相关
+const attributeTableVisible = ref(false);
+const selectedLayerId = ref<string>('');
+const selectedLayerName = ref<string>('');
 
 const showDrawer = () => {
   drawerOpen.value = true;
@@ -247,6 +253,170 @@ const addAnalysisResults = (results: { id: string; name: string; name_cn: string
     }
   });
 };
+
+// 右键图层管理界面的菜单处理
+const onLayerContextMenuClick = async (menuKey: string, layerKey: string, layerTitle: string) => {
+  console.log(`图层管理右键菜单: ${menuKey} - ${layerKey} - ${layerTitle}`);
+
+  switch (menuKey) {
+    case 'viewAttributes':
+      selectedLayerId.value = layerKey;
+      selectedLayerName.value = layerTitle;
+      attributeTableVisible.value = true;
+      break;
+    case 'removeLayer':
+      // 从图层管理面板移除图层
+      layerTreeData.value = layerTreeData.value?.filter(item => item?.key !== layerKey) || [];
+      checkedKeys.value = checkedKeys.value.filter(key => key !== layerKey);
+      // 隐藏图层但不完全移除（保持在scene中以便重新添加）
+      scene?.closeNode(layerKey);
+      window.$message?.success(`已从图层管理中移除 ${layerTitle}`);
+      break;
+    case 'zoomToLayer':
+      // 缩放到图层
+      await zoomToLayer(layerKey, layerTitle);
+      break;
+    default:
+      break;
+  }
+};
+
+// 缩放到图层功能
+async function zoomToLayer(layerKey: string, layerTitle: string) {
+  try {
+    const node = scene?.findNodeById(layerKey);
+    if (!node) {
+      window.$message?.warning('未找到该图层');
+      return;
+    }
+
+    // 如果图层有预设的视图范围，直接使用
+    if (node.viewState) {
+      map.easeTo(node.viewState);
+      return;
+    }
+
+    // 如果图层未激活，先激活它
+    if (!node.active) {
+      const loadSuccess = scene?.loadNode(layerKey);
+      if (!loadSuccess) {
+        window.$message?.warning('无法加载该图层');
+        return;
+      }
+      // 等待图层加载完成
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // 尝试查询图层要素来计算边界
+    const features = scene?.queryLayerFeatures(layerKey);
+    if (features && features.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      let hasValidGeometry = false;
+
+      features.forEach(feature => {
+        if (feature.geometry) {
+          try {
+            switch (feature.geometry.type) {
+              case 'Point':
+                bounds.extend(feature.geometry.coordinates as [number, number]);
+                hasValidGeometry = true;
+                break;
+              case 'LineString':
+                feature.geometry.coordinates.forEach((coord: [number, number]) => {
+                  bounds.extend(coord);
+                });
+                hasValidGeometry = true;
+                break;
+              case 'Polygon':
+                feature.geometry.coordinates[0].forEach((coord: [number, number]) => {
+                  bounds.extend(coord);
+                });
+                hasValidGeometry = true;
+                break;
+              case 'MultiPoint':
+                feature.geometry.coordinates.forEach((coord: [number, number]) => {
+                  bounds.extend(coord);
+                });
+                hasValidGeometry = true;
+                break;
+              case 'MultiLineString':
+                feature.geometry.coordinates.forEach((line: [number, number][]) => {
+                  line.forEach((coord: [number, number]) => {
+                    bounds.extend(coord);
+                  });
+                });
+                hasValidGeometry = true;
+                break;
+              case 'MultiPolygon':
+                feature.geometry.coordinates.forEach((polygon: [number, number][][]) => {
+                  polygon[0].forEach((coord: [number, number]) => {
+                    bounds.extend(coord);
+                  });
+                });
+                hasValidGeometry = true;
+                break;
+              default:
+                console.warn('未支持的几何类型:', feature.geometry.type);
+                break;
+            }
+          } catch (error) {
+            console.warn('处理要素几何时出错:', error);
+          }
+        }
+      });
+
+      if (hasValidGeometry) {
+        // 检查边界是否有效
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
+        if (sw.lng !== ne.lng || sw.lat !== ne.lat) {
+          map.fitBounds(bounds, {
+            padding: 50,
+            maxZoom: 16
+          });
+          window.$message?.success(`已缩放到图层 ${layerTitle}`);
+          return;
+        }
+      }
+    }
+
+    // 如果没有要素数据，尝试使用渲染的图层边界
+    const renderedFeatures = map.queryRenderedFeatures({
+      layers: node.layers.map(layer => layer.id)
+    });
+
+    if (renderedFeatures && renderedFeatures.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      let hasValidGeometry = false;
+
+      renderedFeatures.forEach(feature => {
+        if (feature.geometry && feature.geometry.type === 'Point') {
+          bounds.extend(feature.geometry.coordinates as [number, number]);
+          hasValidGeometry = true;
+        }
+      });
+
+      if (hasValidGeometry) {
+        map.fitBounds(bounds, {
+          padding: 50,
+          maxZoom: 16
+        });
+        window.$message?.success(`已缩放到图层 ${layerTitle}`);
+        return;
+      }
+    }
+
+    // 最后的回退方案：使用默认的缩放级别
+    window.$message?.info(`无法确定图层 ${layerTitle} 的范围，已设置为默认视图`);
+    map.easeTo({
+      center: [115.43530389617354, 7.325620166519911],
+      zoom: 8
+    });
+  } catch (error) {
+    console.error('缩放到图层时出错:', error);
+    window.$message?.error('缩放到图层失败');
+  }
+}
 
 onMounted(async () => {
   if (mapContainer.value) {
@@ -611,8 +781,37 @@ onMounted(async () => {
                   @check="onLayerCheckClick"
                 >
                   <template #title="{ title, key }">
-                    <span v-if="key === '0-0-1-0'" style="color: #1890ff">{{ title }}</span>
-                    <template v-else>{{ title }}</template>
+                    <ADropdown :trigger="['contextmenu']">
+                      <span v-if="key === '0-0-1-0'" style="color: #1890ff">{{ title }}</span>
+                      <span v-else>{{ title }}</span>
+                      <template #overlay>
+                        <AMenu
+                          @click="
+                            ({ key: menuKey }) => onLayerContextMenuClick(menuKey as string, key as string, title)
+                          "
+                        >
+                          <AMenuItem key="viewAttributes">
+                            <div class="flex items-center gap-2">
+                              <TableOutlined />
+                              查看属性表
+                            </div>
+                          </AMenuItem>
+                          <AMenuItem key="zoomToLayer">
+                            <div class="flex items-center gap-2">
+                              <ZoomInOutlined />
+                              缩放到图层
+                            </div>
+                          </AMenuItem>
+                          <AMenuDivider />
+                          <AMenuItem key="removeLayer" class="text-red-500">
+                            <div class="flex items-center gap-2">
+                              <DeleteOutlined />
+                              移除图层
+                            </div>
+                          </AMenuItem>
+                        </AMenu>
+                      </template>
+                    </ADropdown>
                   </template>
                 </ATree>
                 <AEmpty v-if="layerTreeData && layerTreeData.length === 0" class="absolute top-10 h-full w-full" />
@@ -635,6 +834,18 @@ onMounted(async () => {
         @add-analysis-results="addAnalysisResults"
       />
     </div>
+
+    <!-- 属性表组件 -->
+    <AttributeTableWindow
+      v-model:visible="attributeTableVisible"
+      :layer-id="selectedLayerId"
+      :layer-name="selectedLayerName"
+      :map="map"
+      :scene="scene"
+      :z-index="2000"
+      @closed="attributeTableVisible = false"
+      @request-focus="() => {}"
+    />
   </div>
 </template>
 
