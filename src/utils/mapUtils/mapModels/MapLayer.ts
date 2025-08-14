@@ -28,12 +28,18 @@ export default abstract class MapLayer {
   open(): void {
     if (this.map?.getLayer(this.id)) {
       this.map.setLayoutProperty(this.id, 'visibility', 'visible');
+      console.log(`图层 ${this.id} 设置为可见`);
+    } else {
+      console.warn(`图层 ${this.id} 不存在，无法设置为可见`);
     }
   }
 
   close(): void {
     if (this.map?.getLayer(this.id)) {
       this.map.setLayoutProperty(this.id, 'visibility', 'none');
+      console.log(`图层 ${this.id} 设置为隐藏`);
+    } else {
+      console.warn(`图层 ${this.id} 不存在，无法设置为隐藏`);
     }
   }
 
@@ -116,5 +122,9 @@ export default abstract class MapLayer {
 
   get isGeojsonLayer() {
     return this.node.geojsonData !== null;
+  }
+
+  get isFeatureCollection() {
+    return this.node.geojsonData && this.node.geojsonData.type === 'FeatureCollection';
   }
 }

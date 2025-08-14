@@ -120,6 +120,56 @@ export default class MapNode {
     return node;
   }
 
+  // eslint-disable-next-line max-params
+  static createTempFromFeatureCollection(id: string, name: string, featureCollection: any, _scene: MapScene): MapNode {
+    const node = new MapNode();
+    node.id = id;
+    node.name = name;
+    node.geojsonData = featureCollection;
+    node.scene = _scene;
+    
+    // 根据FeatureCollection中第一个要素的几何类型确定节点类型
+    if (featureCollection.features && featureCollection.features.length > 0) {
+      const firstFeature = featureCollection.features[0];
+      const type = firstFeature.geometry.type;
+      switch (type) {
+        case 'Point': {
+          node.type = NodeType.POINT;
+          break;
+        }
+        case 'MultiPoint': {
+          // MultiPoint 在渲染上与 Point 使用同一套样式
+          node.type = NodeType.POINT;
+          break;
+        }
+        case 'LineString': {
+          node.type = NodeType.LINE;
+          break;
+        }
+        case 'MultiLineString': {
+          node.type = NodeType.LINE;
+          break;
+        }
+        case 'Polygon': {
+          node.type = NodeType.POLYGON;
+          break;
+        }
+        case 'MultiPolygon': {
+          node.type = NodeType.POLYGON;
+          break;
+        }
+        default:
+          node.type = NodeType.CUSTOM;
+          break;
+      }
+    } else {
+      node.type = NodeType.CUSTOM;
+    }
+
+    node.genLayers();
+    return node;
+  }
+
   // 根据节点配置生成图层实例
   genLayers() {
     switch (this.type) {
@@ -226,7 +276,7 @@ export default class MapNode {
   }
 
   openAll() {
-    console.log(`显示图层节点 ${this.id} 的所有图层`);
+    console.log(`显示图层节点 ${this.id} 的所有图层，图层数量: ${this.layers.length}`);
     this.layers.forEach(layer => {
       console.log(`显示图层: ${layer.id}`);
       layer.open();
@@ -234,7 +284,7 @@ export default class MapNode {
   }
 
   closeAll() {
-    console.log(`隐藏图层节点 ${this.id} 的所有图层`);
+    console.log(`隐藏图层节点 ${this.id} 的所有图层，图层数量: ${this.layers.length}`);
     this.layers.forEach(layer => {
       console.log(`隐藏图层: ${layer.id}`);
       layer.close();
@@ -274,14 +324,31 @@ export default class MapNode {
   }
 
   moveBeforeNode(beforeNode: MapNode | null) {
-    if (beforeNode === null || beforeNode.layers.length === 0) {
-      this.layers.forEach((layer: MapLayer) => {
-        this.map?.moveLayer(layer.id);
-      });
+    // 若样式未准备好，延迟再尝试
+    if (this.map && !this.map.isStyleLoaded()) {
+      this.map.once('load', () => this.moveBeforeNode(beforeNode));
+      return;
+    }
+
+    const moveAll = () => {
+      if (beforeNode === null || beforeNode.layers.length === 0) {
+        this.layers.forEach((layer: MapLayer) => {
+          if (this.map?.getLayer(layer.id)) this.map.moveLayer(layer.id);
+        });
+      } else {
+        const beforeLayerId = beforeNode.getLayer(0)?.id;
+        this.layers.forEach((layer: MapLayer) => {
+          if (this.map?.getLayer(layer.id)) this.map.moveLayer(layer.id, beforeLayerId);
+        });
+      }
+    };
+
+    // 如果 beforeNode 的第一层尚未存在，延迟重试一次
+    const needRetry = beforeNode && beforeNode.layers.length > 0 && !this.map?.getLayer(beforeNode.getLayer(0).id);
+    if (needRetry) {
+      setTimeout(moveAll, 100);
     } else {
-      this.layers.forEach((layer: MapLayer) => {
-        this.map?.moveLayer(layer.id, beforeNode.getLayer(0).id);
-      });
+      moveAll();
     }
   }
 }

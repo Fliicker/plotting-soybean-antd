@@ -10,6 +10,7 @@ interface Props {
   map?: mapboxgl.Map | null;
   scene?: any;
   zIndex?: number;
+  localData?: any[]; // 本地数据（用于绘制要素）
 }
 const props = withDefaults(defineProps<Props>(), { zIndex: 2000 });
 const emit = defineEmits<{ 'update:visible': [boolean]; closed: []; 'request-focus': [] }>();
@@ -211,6 +212,14 @@ const columns = computed<ColumnsType>(() => {
 
 async function loadFromServer() {
   if (!props.layerId) return;
+  
+  // 如果是绘制要素，不调用后端API
+  if (props.layerId.startsWith('draw_')) {
+    console.log('绘制要素不调用后端API');
+    loadFromLocal();
+    return;
+  }
+  
   loading.value = true;
   try {
     // 每次都重新获取列名，确保数据最新
@@ -262,8 +271,61 @@ async function loadFromServer() {
   }
 }
 
+function loadFromLocal() {
+  if (!props.localData || props.localData.length === 0) {
+    console.warn('没有本地数据或数据为空');
+    loading.value = false;
+    // 设置空数据
+    availableFields.value = [];
+    totalFeatures.value = 0;
+    allTableData.value = [];
+    tableData.value = [];
+    return;
+  }
+  
+  loading.value = true;
+  try {
+    // 从全部数据里收集列名（取并集），避免不同子层出现字段不一致导致缺列
+    const fieldSet = new Set<string>();
+    for (const row of props.localData) {
+      Object.keys(row || {}).forEach(k => {
+        if (k !== 'geom') fieldSet.add(k);
+      });
+    }
+    availableFields.value = Array.from(fieldSet);
+    
+    // 设置数据
+    totalFeatures.value = props.localData.length;
+    allTableData.value = props.localData;
+    
+    // 分页数据
+    const start = (currentPage.value - 1) * pageSize.value;
+    const end = start + pageSize.value;
+    tableData.value = props.localData.slice(start, end);
+    
+    console.log('已加载本地数据:', {
+      总数: totalFeatures.value,
+      列: availableFields.value,
+      当前页数据: tableData.value.length
+    });
+  } catch (error) {
+    console.error('加载本地数据失败:', error);
+    availableFields.value = [];
+    totalFeatures.value = 0;
+    allTableData.value = [];
+    tableData.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
+
 async function loadFeatures() {
-  await loadFromServer();
+  // 检查是否是绘制要素（以draw_开头的layerId）或有本地数据
+  if (props.layerId.startsWith('draw_') || props.localData) {
+    loadFromLocal();
+  } else {
+    await loadFromServer();
+  }
 }
 
 function refreshData() {
@@ -280,6 +342,13 @@ function handleSearch() {
 
 async function loadAllDataForSearch() {
   if (!props.layerId || !availableFields.value.length) return;
+  
+  // 本地数据已经在allTableData中，不需要重新加载
+  if (props.layerId.startsWith('draw_') || props.localData) {
+    console.log('使用本地数据进行搜索');
+    return;
+  }
+  
   try {
     console.log('为搜索加载全部数据...');
     const allRowsResponse = (await fetchVectorAttributes(props.layerId, {
@@ -299,13 +368,28 @@ function handlePageChange(page: number) {
   currentPage.value = page;
   // 如果有搜索条件，不需要重新加载数据，只需要更新页码
   if (!searchField.value || !searchValue.value) {
-    loadFeatures();
+    // 本地数据的分页处理
+    if (props.layerId.startsWith('draw_') || props.localData) {
+      const start = (page - 1) * pageSize.value;
+      const end = start + pageSize.value;
+      tableData.value = allTableData.value.slice(start, end);
+    } else {
+      loadFeatures();
+    }
   }
 }
 function handlePageSizeChange(_page: number, sizeVal: number) {
   pageSize.value = sizeVal;
   currentPage.value = 1;
-  loadFeatures();
+  
+  // 本地数据的分页处理
+  if (props.layerId.startsWith('draw_') || props.localData) {
+    const start = 0;
+    const end = sizeVal;
+    tableData.value = allTableData.value.slice(start, end);
+  } else {
+    loadFeatures();
+  }
 }
 
 function exportData() {
@@ -354,6 +438,16 @@ watch(
       pageSize.value = 50;
       loadFeatures();
     }
+  }
+);
+
+// 当本地数据（含“绘制要素”总节点聚合数据）变化时，刷新列与数据，保证新加入的字段（如面积）可见
+watch(
+  () => props.localData,
+  () => {
+    if (!props.visible) return;
+    currentPage.value = 1;
+    loadFromLocal();
   }
 );
 </script>

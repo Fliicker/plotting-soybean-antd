@@ -66,6 +66,12 @@ export default class MapScene {
     return this.nodes.indexOf(node);
   }
 
+  addTempNodeFromCollection(id: string, name: string, featureCollection: any) {
+    const node = MapNode.createTempFromFeatureCollection(id, name, featureCollection, this);
+    this.nodes.push(node);
+    return this.nodes.indexOf(node);
+  }
+
   removeAllNodes() {
     this.nodes.forEach(node => {
       node.removeAll();
@@ -120,9 +126,16 @@ export default class MapScene {
 
   removeNode(id: string): boolean {
     const node = this.findNodeById(id);
-    if (node !== undefined && node.active) {
+    if (node !== undefined) {
+      // 先移除所有图层和源
       node.removeAll();
-      return true;
+      // 从nodes数组中完全移除该节点
+      const index = this.nodes.findIndex(n => n.id === id);
+      if (index !== -1) {
+        this.nodes.splice(index, 1);
+        console.log(`已完全移除节点: ${id}`);
+        return true;
+      }
     }
     return false;
   }
