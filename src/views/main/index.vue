@@ -13,6 +13,7 @@ import AttributeTableWindow from '@/components/common/AttributeTableWindow.vue';
 import { createFeatureWithAttributes } from '@/utils/mapUtils/featureUtils';
 import ChatBox from './modules/chat-box.vue';
 import type { ChatBoxExpose } from './modules/chat-box.vue';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 mapboxgl.accessToken =
   import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ||
@@ -114,42 +115,91 @@ const onLoadNodesByName = (input: { id: string; name: string }[]) => {
 const onLayerTreeDrop = (info: AntTreeNodeDropEvent) => {
   if (!scene) return;
 
-  const dropKey = info.node.key; // 目标节点key
-  const dragKey = info.dragNode.key; // 拖拽节点key
-  const dropPos = info.dropPosition; // 放置位置
-  const data = [...(layerTreeData.value || [])]; // 当前树数据
+  const data = [...(layerTreeData.value || [])];
+  const dragKey = String(info.dragNode.key);
+  const dropKey = String(info.node.key);
 
   const dragIndex = data.findIndex(item => item?.key === dragKey);
-  const dropIndex = data.findIndex(item => item?.key === dropKey); // Attention: 拖到最顶端时无法变成-1（仍然为0）
+  const dropIndex = data.findIndex(item => item?.key === dropKey);
 
-  // 更改图层顺序
-  const layerId = String(dragKey); // 拖拽图层的 ID
-  const beforeId = dropPos !== -1 ? String(data[dropPos - 1]?.key) : null; // 目标图层的 ID（下一个图层的 ID
-  console.log('重排图层:', { drag: String(info.dragNode.key), before: beforeId, dropPos });
-  // 确保源/目标节点已激活并存在于样式中
+  // 先从旧位置移除
+  const [removed] = data.splice(dragIndex, 1);
+
+  // 计算插入的新位置（树已禁止 dropPosition === 0）
+  let newIndex = dropIndex;
+  if (info.dropPosition === -1) newIndex = dropIndex;       // 上方
+  else if (info.dropPosition === 1) newIndex = dropIndex + 1; // 下方
+
+  // 插入到新位置
+  data.splice(newIndex, 0, removed);
+
+  // 仅用"新顺序中最近的上一个有效图层节点"作为锚点
+  function findPrevValidId(index: number): string | null {
+    for (let i = index - 1; i >= 0; i--) {
+      const k = String(data[i]?.key);
+      if (scene?.findNodeById(k)) return k;
+    }
+    return null;
+  }
+  const beforeId = findPrevValidId(newIndex);
+
+  // 确保源/锚点节点已加载并可见
   if (beforeId) {
     scene.loadNode(beforeId);
     scene.openNode(beforeId);
   }
-  scene.loadNode(layerId);
-  scene.openNode(layerId);
-  // 执行移动
-  scene.moveNode(layerId, beforeId);
+  scene.loadNode(dragKey);
+  scene.openNode(dragKey);
 
-  // 移除拖拽节点
-  const [removed] = data.splice(dragIndex, 1);
+  // 把拖拽图层移动到 beforeId 之前；如果 beforeId = null，则移到最顶层
+  scene.moveNode(dragKey, beforeId);
 
-  let newIndex = dropIndex;
-  if (dropPos === -1) {
-    newIndex = 0;
-  } else {
-    newIndex = dropIndex >= dragIndex ? dropIndex : dropIndex + 1;
-  }
-  console.log(dropPos);
-  data.splice(newIndex, 0, removed);
-
-  // 更新图层树
+  // 更新面板顺序
   layerTreeData.value = [...data];
+
+  // 全量重排：按面板从下到上依次移到顶，确保压盖顺序一致
+  const forceReorderByPanel = () => {
+    const items = (layerTreeData.value || [])
+      .map(it => String(it?.key))
+      .filter(k => !!scene?.findNodeById(k)); // 过滤分组/无效节点
+    for (let i = items.length - 1; i >= 0; i--) {
+      const id = items[i];
+      scene?.loadNode(id);
+      scene?.openNode(id);
+      scene?.moveNode(id, null); // null = 移到最顶
+    }
+  };
+
+  // Draw 图层（gl-draw-）如需保留显示，将其作为整体块一起移动
+  const moveDrawBlock = (anchorId: string | null) => {
+    const m = scene?.map;
+    if (!m) return;
+    const ids = (m.getStyle().layers || []).map(l => l.id).filter(id => id.startsWith('gl-draw-'));
+    ids.forEach(id => {
+      if (anchorId) m.moveLayer(id, anchorId);
+      else m.moveLayer(id);
+    });
+  };
+
+  // 延迟到样式空闲后再统一重排，避免目标层尚未挂载
+  const m = scene?.map;
+  if (m) {
+    m.once('idle', () => {
+      forceReorderByPanel();
+
+      // 若你没有调用 draw.deleteAll() 清掉 Draw 的渲染层，则同步移动它的块位置
+      const panel = layerTreeData.value || [];
+      const drawGroupIdx = panel.findIndex(it => it?.key === 'draw_features');
+      if (drawGroupIdx !== -1) {
+        let anchor: string | null = null;
+        for (let i = drawGroupIdx + 1; i < panel.length; i++) {
+          const k = String(panel[i]?.key);
+          if (scene?.findNodeById(k)) { anchor = k; break; }
+        }
+        moveDrawBlock(anchor);
+      }
+    });
+  }
 };
 
 const onLayerCheckClick = (_: any, e: AntTreeNodeCheckedEvent) => {
@@ -533,6 +583,7 @@ const confirmAddFeatureToLayer = () => {
   
   // 清除绘制的要素（可选）
   // draw.deleteAll();
+  draw.deleteAll(); // 清空Draw控件自带的gl-draw-*图层显示
 };
 
 // 取消添加要素到图层
@@ -824,31 +875,8 @@ const createHorizontalControlBar = () => {
   `;
   zoomOutBtn.addEventListener('click', () => map.zoomOut());
 
-  // 创建重置方向按钮
-  const compassBtn = document.createElement('button');
-  compassBtn.className = 'mapboxgl-ctrl-icon mapboxgl-ctrl-compass';
-  compassBtn.title = '重置方向';
-  compassBtn.innerHTML = '⊙';
-  compassBtn.style.cssText = `
-    background: white;
-    border: none;
-    width: 29px;
-    height: 29px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    font-weight: bold;
-    color: #374151;
-  `;
-  compassBtn.addEventListener('click', () => {
-    map.easeTo({ bearing: 0, pitch: 0 });
-  });
-
   navGroup.appendChild(zoomInBtn);
   navGroup.appendChild(zoomOutBtn);
-  navGroup.appendChild(compassBtn);
   controlBar.appendChild(navGroup);
 
   // 添加分隔线
@@ -1084,6 +1112,16 @@ const createHorizontalControlBar = () => {
   const originalDrawControl = document.querySelector('.mapboxgl-ctrl-top-left') as HTMLElement;
   
   if (originalDrawControl) originalDrawControl.style.display = 'none';
+
+  // 官方罗盘（仅罗盘，不含缩放）
+  const barCompass = new mapboxgl.NavigationControl({
+    visualizePitch: true,
+    showCompass: true,
+    showZoom: false
+  });
+  const compassEl = barCompass.onAdd(map);
+  compassEl.style.marginLeft = '6px'; // 与现有按钮留出间距
+  controlBar.appendChild(compassEl);
 };
 
 // 缩放到图层功能
@@ -1323,8 +1361,7 @@ onMounted(async () => {
         const navIconStyle = document.createElement('style');
         navIconStyle.textContent = `
           .mapboxgl-ctrl-zoom-in .mapboxgl-ctrl-icon,
-          .mapboxgl-ctrl-zoom-out .mapboxgl-ctrl-icon,
-          .mapboxgl-ctrl-compass .mapboxgl-ctrl-icon {
+          .mapboxgl-ctrl-zoom-out .mapboxgl-ctrl-icon {
             background-image: none !important;
             display: flex !important;
             align-items: center !important;
@@ -1341,10 +1378,7 @@ onMounted(async () => {
           .mapboxgl-ctrl-zoom-out .mapboxgl-ctrl-icon::before {
             content: '−' !important;
           }
-          
-          .mapboxgl-ctrl-compass .mapboxgl-ctrl-icon::before {
-            content: '⊙' !important;
-          }
+          /* 保留原生罗盘箭头与旋转行为，不做覆盖 */
         `;
         document.head.appendChild(navIconStyle);
       }
@@ -1388,8 +1422,8 @@ onMounted(async () => {
               'text-gray-700' // 图标颜色
             );
 
-            // 手动添加图标内容
-            if (index === 0) {
+          // 手动添加图标内容（仅缩放按钮）。罗盘按钮保持原生箭头与旋转行为。
+          if (index === 0) {
               // 放大按钮
               button.innerHTML = '+';
               button.title = '放大';
@@ -1397,11 +1431,7 @@ onMounted(async () => {
               // 缩小按钮
               button.innerHTML = '−';
               button.title = '缩小';
-            } else if (index === 2) {
-              // 重置方向按钮
-              button.innerHTML = '⊙';
-              button.title = '重置方向';
-            }
+          }
           });
         }
       }
@@ -1565,6 +1595,8 @@ onMounted(async () => {
     }
   }
 });
+
+
 </script>
 
 <template>
@@ -1692,7 +1724,7 @@ onMounted(async () => {
     <div class="absolute">
       <AButton type="primary" @click="showDrawer">Open</AButton>
     </div>
-    <div class="absolute right-5 top-1/10 h-4/5 w-1/5">
+    <div class="absolute right-5 h-4/5 w-1/5" style="top: 10%; z-index: 1200;">
       <ChatBox
         ref="chatBoxRef"
         @on-load-nodes-by-name="onLoadNodesByName"
