@@ -1,0 +1,22 @@
+# 代理模式解决方案
+
+如果修复 .env 文件格式后仍有问题，可以尝试启用代理模式：
+
+## 方案 A：启用代理模式
+在 .env 文件中修改：
+VITE_HTTP_PROXY=Y
+
+这样会启用 Vite 代理，请求会通过代理转发到后端。
+
+## 方案 B：直接修改请求配置
+如果不想使用代理，可以直接在代码中硬编码 baseURL：
+
+在 panoramaTW/src/service/request/index.ts 中：
+将第 176 行：
+baseURL: otherBaseURL.data
+
+修改为：
+baseURL: 'http://localhost:8765/api/v0'
+
+## 推荐方案
+建议先尝试修复 .env 文件格式（解决方案 1），如果不行再考虑启用代理模式。
