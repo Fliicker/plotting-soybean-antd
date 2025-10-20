@@ -185,7 +185,27 @@ onMounted(async () => {
   if (mapContainer.value) {
     map = new mapboxgl.Map({
       container: mapContainer.value,
-      style: 'mapbox://styles/mapbox/satellite-v9',
+      style: {
+        sources: {
+          tdtVec: {
+            type: 'raster',
+            tiles: [
+              'https://t5.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=a76b9ea6e49fb0eecdb1ed34d1e75930'
+            ],
+            tileSize: 256
+          }
+        },
+        layers: [
+          {
+            id: 'tdtVec',
+            type: 'raster',
+            source: 'tdtVec'
+          }
+        ],
+        sprite: 'mapbox://sprites/examples/cjikt35x83t1z2rnxpdmjs7y7',
+        glyphs: 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf',
+        version: 8
+      },
       center: [120.5174, 23.66552],
       zoom: 7,
       language: 'zh-Hans'

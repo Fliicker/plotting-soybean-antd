@@ -270,4 +270,5 @@ export const difyRequest = createFlatRequest<App.Service.Response, RequestInstan
   }
 );
 
-export const mapRequestHead = `http://${window.location.host}${otherBaseURL.data}`;
+export const mapRequestHead =
+  import.meta.env.MODE === 'test' ? `http://${window.location.host}${otherBaseURL.data}` : otherBaseURL.data;
